@@ -12,6 +12,108 @@ import javafx.scene.text.*;
 import javafx.stage.Stage;
 
 // ─────────────────────────────────────────────
+//  SHARED STYLE HELPERS
+// ─────────────────────────────────────────────
+
+class Styles {
+
+    // Color palette — calm, professional
+    static final String BG         = "#F7F8FA";
+    static final String CARD       = "#FFFFFF";
+    static final String PRIMARY    = "#3D5A80";   // deep navy-blue
+    static final String PRIMARY_H  = "#2C4466";   // hover
+    static final String ACCENT     = "#E07A5F";   // warm coral for accents
+    static final String TEXT_DARK  = "#1A2030";
+    static final String TEXT_MUTED = "#8D93A0";
+    static final String BORDER     = "#E2E6EC";
+    static final String SUCCESS    = "#4CAF7D";
+    static final String WARNING    = "#F4A261";
+    static final String DANGER     = "#E63946";
+    static final String SIDEBAR_BG = "#1A2030";
+    static final String FONT       = "Segoe UI";
+
+    static void field(Control f) {
+        f.setStyle("-fx-background-color: " + CARD + "; "
+                + "-fx-border-color: " + BORDER + "; "
+                + "-fx-border-radius: 6; -fx-background-radius: 6; "
+                + "-fx-padding: 9 12; -fx-font-size: 13px; "
+                + "-fx-font-family: '" + FONT + "'; "
+                + "-fx-text-fill: " + TEXT_DARK + ";");
+    }
+
+    static Button primaryBtn(String text) {
+        Button b = new Button(text);
+        b.setPrefHeight(42);
+        b.setStyle("-fx-background-color: " + PRIMARY + "; -fx-text-fill: white; "
+                + "-fx-font-size: 13px; -fx-font-weight: bold; "
+                + "-fx-font-family: '" + FONT + "'; "
+                + "-fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 0 22;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + PRIMARY_H + "; -fx-text-fill: white; "
+                + "-fx-font-size: 13px; -fx-font-weight: bold; "
+                + "-fx-font-family: '" + FONT + "'; "
+                + "-fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 0 22;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + PRIMARY + "; -fx-text-fill: white; "
+                + "-fx-font-size: 13px; -fx-font-weight: bold; "
+                + "-fx-font-family: '" + FONT + "'; "
+                + "-fx-background-radius: 6; -fx-cursor: hand; -fx-padding: 0 22;"));
+        return b;
+    }
+
+    static Button ghostBtn(String text, String color) {
+        Button b = new Button(text);
+        b.setPrefHeight(38);
+        b.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; "
+                + "-fx-font-size: 12px; -fx-font-family: '" + FONT + "'; "
+                + "-fx-background-radius: 6; -fx-padding: 6 16;");
+        return b;
+    }
+
+    static Button linkBtn(String text) {
+        Button b = new Button(text);
+        b.setStyle("-fx-background-color: transparent; -fx-text-fill: " + PRIMARY + "; "
+                + "-fx-font-size: 12px; -fx-font-family: '" + FONT + "'; "
+                + "-fx-cursor: hand; -fx-padding: 0;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; "
+                + "-fx-font-size: 12px; -fx-font-family: '" + FONT + "'; "
+                + "-fx-cursor: hand; -fx-padding: 0;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: transparent; -fx-text-fill: " + PRIMARY + "; "
+                + "-fx-font-size: 12px; -fx-font-family: '" + FONT + "'; "
+                + "-fx-cursor: hand; -fx-padding: 0;"));
+        return b;
+    }
+
+    static Label heading(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font(FONT, FontWeight.BOLD, 26));
+        l.setTextFill(Color.web(TEXT_DARK));
+        return l;
+    }
+
+    static Label subheading(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font(FONT, FontWeight.BOLD, 18));
+        l.setTextFill(Color.web(TEXT_DARK));
+        return l;
+    }
+
+    static Label muted(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font(FONT, 13));
+        l.setTextFill(Color.web(TEXT_MUTED));
+        return l;
+    }
+
+    static VBox card(javafx.scene.Node... children) {
+        VBox box = new VBox(14);
+        box.getChildren().addAll(children);
+        box.setPadding(new Insets(22));
+        box.setStyle("-fx-background-color: " + CARD + "; -fx-background-radius: 10; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 12, 0, 0, 3);");
+        return box;
+    }
+}
+
+// ─────────────────────────────────────────────
 //  LOGIN VIEW
 // ─────────────────────────────────────────────
 
@@ -21,62 +123,225 @@ class LoginView {
     private TextField     emailField;
     private PasswordField passwordField;
     private Button        loginBtn;
+    private Button        registerLink;
 
     public LoginView(Stage stage) { this.stage = stage; }
 
     public Scene getScene() {
-        Label title = new Label("💰 Finance Tracker");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 28));
-        title.setTextFill(Color.web("#2c3e50"));
+        // Left decorative panel
+        VBox leftPanel = new VBox();
+        leftPanel.setPrefWidth(380);
+        leftPanel.setAlignment(Pos.CENTER);
+        leftPanel.setPadding(new Insets(50));
+        leftPanel.setStyle("-fx-background-color: " + Styles.SIDEBAR_BG + ";");
 
-        Label subtitle = new Label("Manage your money wisely");
-        subtitle.setFont(Font.font("Arial", 14));
-        subtitle.setTextFill(Color.web("#7f8c8d"));
+        Label brand = new Label("Finance\nTracker");
+        brand.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 38));
+        brand.setTextFill(Color.WHITE);
+        brand.setLineSpacing(4);
+
+        Label tagline = Styles.muted("Take control of your money.");
+        tagline.setTextFill(Color.web("#8D93A0"));
+        tagline.setFont(Font.font(Styles.FONT, 15));
+
+        // Decorative horizontal rule
+        Region rule = new Region();
+        rule.setPrefHeight(2);
+        rule.setPrefWidth(60);
+        rule.setStyle("-fx-background-color: " + Styles.ACCENT + "; -fx-background-radius: 2;");
+
+        VBox leftContent = new VBox(18, brand, rule, tagline);
+        leftContent.setAlignment(Pos.CENTER_LEFT);
+        leftPanel.getChildren().add(leftContent);
+
+        // Right form panel
+        Label title    = Styles.heading("Welcome back");
+        Label subtitle = Styles.muted("Sign in to your account");
+
+        Label emailLbl = new Label("Email address");
+        emailLbl.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 12));
+        emailLbl.setTextFill(Color.web(Styles.TEXT_DARK));
 
         emailField = new TextField();
-        emailField.setPromptText("Email");
-        emailField.setPrefWidth(300);
-        emailField.setPrefHeight(40);
-        styleField(emailField);
+        emailField.setPromptText("you@example.com");
+        emailField.setPrefHeight(42);
+        emailField.setPrefWidth(340);
+        Styles.field(emailField);
+
+        Label passLbl = new Label("Password");
+        passLbl.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 12));
+        passLbl.setTextFill(Color.web(Styles.TEXT_DARK));
 
         passwordField = new PasswordField();
-        passwordField.setPromptText("Password");
-        passwordField.setPrefWidth(300);
-        passwordField.setPrefHeight(40);
-        styleField(passwordField);
+        passwordField.setPromptText("Enter your password");
+        passwordField.setPrefHeight(42);
+        passwordField.setPrefWidth(340);
+        Styles.field(passwordField);
 
-        loginBtn = new Button("Login");
-        loginBtn.setPrefWidth(300);
-        loginBtn.setPrefHeight(40);
-        loginBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; " +
-                "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8;");
+        loginBtn = Styles.primaryBtn("Sign In");
+        loginBtn.setPrefWidth(340);
 
-        VBox form = new VBox(12, emailField, passwordField, loginBtn);
-        form.setAlignment(Pos.CENTER);
+        registerLink = Styles.linkBtn("Create an account");
+        Label noAcct = Styles.muted("Don't have an account?");
 
-        VBox card = new VBox(20, title, subtitle, form);
-        card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(40));
-        card.setMaxWidth(380);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);");
+        HBox regRow = new HBox(6, noAcct, registerLink);
+        regRow.setAlignment(Pos.CENTER);
 
-        StackPane root = new StackPane(card);
-        root.setStyle("-fx-background-color: #ecf0f1;");
-        root.setPrefSize(600, 450);
+        VBox form = new VBox(8,
+                emailLbl, emailField,
+                passLbl, passwordField,
+                new Region() {{ setPrefHeight(6); }},
+                loginBtn,
+                new Region() {{ setPrefHeight(4); }},
+                regRow);
+        form.setAlignment(Pos.CENTER_LEFT);
 
-        return new Scene(root, 600, 450);
-    }
+        VBox rightPanel = new VBox(28, title, subtitle, form);
+        rightPanel.setAlignment(Pos.CENTER);
+        rightPanel.setPadding(new Insets(60, 70, 60, 70));
+        rightPanel.setStyle("-fx-background-color: " + Styles.BG + ";");
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
 
-    private void styleField(Control f) {
-        f.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 8; " +
-                "-fx-background-radius: 8; -fx-padding: 8; -fx-font-size: 13px;");
+        HBox root = new HBox(leftPanel, rightPanel);
+        return new Scene(root, 780, 520);
     }
 
     public TextField     getEmailField()    { return emailField; }
     public PasswordField getPasswordField() { return passwordField; }
     public Button        getLoginBtn()      { return loginBtn; }
+    public Button        getRegisterLink()  { return registerLink; }
     public Stage         getStage()         { return stage; }
+}
+
+// ─────────────────────────────────────────────
+//  REGISTRATION VIEW
+// ─────────────────────────────────────────────
+
+class RegistrationView {
+
+    private Stage         stage;
+    private TextField     nameField;
+    private TextField     emailField;
+    private PasswordField passwordField;
+    private PasswordField confirmField;
+    private ComboBox<String> currencyBox;
+    private Button        registerBtn;
+    private Button        backToLoginLink;
+
+    public RegistrationView(Stage stage) { this.stage = stage; }
+
+    public Scene getScene() {
+        // Left panel
+        VBox leftPanel = new VBox();
+        leftPanel.setPrefWidth(380);
+        leftPanel.setAlignment(Pos.CENTER);
+        leftPanel.setPadding(new Insets(50));
+        leftPanel.setStyle("-fx-background-color: " + Styles.SIDEBAR_BG + ";");
+
+        Label brand = new Label("Finance\nTracker");
+        brand.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 38));
+        brand.setTextFill(Color.WHITE);
+        brand.setLineSpacing(4);
+
+        Region rule = new Region();
+        rule.setPrefHeight(2); rule.setPrefWidth(60);
+        rule.setStyle("-fx-background-color: " + Styles.ACCENT + "; -fx-background-radius: 2;");
+
+        Label tagline = Styles.muted("Your journey starts here.");
+        tagline.setTextFill(Color.web("#8D93A0"));
+        tagline.setFont(Font.font(Styles.FONT, 15));
+
+        leftPanel.getChildren().add(new VBox(18, brand, rule, tagline));
+
+        // Right form
+        Label title    = Styles.heading("Create account");
+        Label subtitle = Styles.muted("Fill in your details to get started");
+
+        // Name
+        Label nameLbl = fieldLabel("Full name");
+        nameField = new TextField();
+        nameField.setPromptText("Ahmed Mohamed");
+        nameField.setPrefHeight(42); nameField.setPrefWidth(340);
+        Styles.field(nameField);
+
+        // Email
+        Label emailLbl = fieldLabel("Email address");
+        emailField = new TextField();
+        emailField.setPromptText("you@example.com");
+        emailField.setPrefHeight(42); emailField.setPrefWidth(340);
+        Styles.field(emailField);
+
+        // Password
+        Label passLbl = fieldLabel("Password");
+        passwordField = new PasswordField();
+        passwordField.setPromptText("Minimum 6 characters");
+        passwordField.setPrefHeight(42); passwordField.setPrefWidth(340);
+        Styles.field(passwordField);
+
+        // Confirm
+        Label confirmLbl = fieldLabel("Confirm password");
+        confirmField = new PasswordField();
+        confirmField.setPromptText("Repeat your password");
+        confirmField.setPrefHeight(42); confirmField.setPrefWidth(340);
+        Styles.field(confirmField);
+
+        // Currency
+        Label currencyLbl = fieldLabel("Currency");
+        currencyBox = new ComboBox<>(FXCollections.observableArrayList("USD", "EUR", "GBP", "EGP", "SAR", "AED"));
+        currencyBox.setValue("USD");
+        currencyBox.setPrefHeight(42); currencyBox.setPrefWidth(340);
+        currencyBox.setStyle("-fx-font-family: '" + Styles.FONT + "'; -fx-font-size: 13px;");
+
+        registerBtn = Styles.primaryBtn("Create Account");
+        registerBtn.setPrefWidth(340);
+
+        backToLoginLink = Styles.linkBtn("Sign in instead");
+        Label alreadyLbl = Styles.muted("Already have an account?");
+        HBox loginRow = new HBox(6, alreadyLbl, backToLoginLink);
+        loginRow.setAlignment(Pos.CENTER);
+
+        VBox form = new VBox(7,
+                nameLbl, nameField,
+                emailLbl, emailField,
+                passLbl, passwordField,
+                confirmLbl, confirmField,
+                currencyLbl, currencyBox,
+                new Region() {{ setPrefHeight(6); }},
+                registerBtn,
+                new Region() {{ setPrefHeight(4); }},
+                loginRow);
+        form.setAlignment(Pos.CENTER_LEFT);
+
+        ScrollPane scroll = new ScrollPane(form);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;");
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        VBox rightPanel = new VBox(22, title, subtitle, scroll);
+        rightPanel.setAlignment(Pos.TOP_CENTER);
+        rightPanel.setPadding(new Insets(50, 70, 50, 70));
+        rightPanel.setStyle("-fx-background-color: " + Styles.BG + ";");
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
+
+        HBox root = new HBox(leftPanel, rightPanel);
+        return new Scene(root, 780, 580);
+    }
+
+    private Label fieldLabel(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 12));
+        l.setTextFill(Color.web(Styles.TEXT_DARK));
+        return l;
+    }
+
+    public TextField     getNameField()        { return nameField; }
+    public TextField     getEmailField()       { return emailField; }
+    public PasswordField getPasswordField()    { return passwordField; }
+    public PasswordField getConfirmField()     { return confirmField; }
+    public ComboBox<String> getCurrencyBox()   { return currencyBox; }
+    public Button        getRegisterBtn()      { return registerBtn; }
+    public Button        getBackToLoginLink()  { return backToLoginLink; }
+    public Stage         getStage()            { return stage; }
 }
 
 // ─────────────────────────────────────────────
@@ -95,50 +360,49 @@ class DashboardView {
 
     public Scene getScene() {
         // Sidebar
-        Label appName = new Label("💰 Finance");
-        appName.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        Label appName = new Label("Finance Tracker");
+        appName.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 16));
         appName.setTextFill(Color.WHITE);
 
-        navTransactions = sidebarBtn("📋  Transactions");
-        navBudget       = sidebarBtn("📊  Budget");
-        navGoals        = sidebarBtn("🎯  Goals");
-        navReports      = sidebarBtn("📄  Reports");
-        navLogout       = sidebarBtn("🚪  Logout");
+        navTransactions = sidebarBtn("Transactions");
+        navBudget       = sidebarBtn("Budget");
+        navGoals        = sidebarBtn("Goals");
+        navReports      = sidebarBtn("Reports");
+        navLogout       = sidebarBtn("Logout");
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        VBox sidebar = new VBox(15, appName, new Separator(),
+        VBox sidebar = new VBox(10, appName, new Separator(),
                 navTransactions, navBudget, navGoals, navReports, spacer, navLogout);
-        sidebar.setPadding(new Insets(20));
-        sidebar.setPrefWidth(180);
-        sidebar.setStyle("-fx-background-color: #2c3e50;");
+        sidebar.setPadding(new Insets(22));
+        sidebar.setPrefWidth(195);
+        sidebar.setStyle("-fx-background-color: " + Styles.SIDEBAR_BG + ";");
 
         // Balance card
         balanceLabel = new Label("$0.00");
-        balanceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 36));
-        balanceLabel.setTextFill(Color.web("#27ae60"));
+        balanceLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 38));
+        balanceLabel.setTextFill(Color.web(Styles.SUCCESS));
 
-        Label balTitle = new Label("Current Balance");
-        balTitle.setFont(Font.font("Arial", 13));
-        balTitle.setTextFill(Color.web("#7f8c8d"));
-
-        VBox balCard = card(new VBox(5, balTitle, balanceLabel));
+        Label balTitle = Styles.muted("Current Balance");
+        VBox balCard = Styles.card(balTitle, balanceLabel);
 
         // Pie chart
         pieChart = new PieChart(FXCollections.observableArrayList(
                 new PieChart.Data("Food", 30), new PieChart.Data("Transport", 20),
                 new PieChart.Data("Bills", 25), new PieChart.Data("Others", 25)));
         pieChart.setTitle("Spending by Category");
-        pieChart.setPrefHeight(250);
-        VBox pieCard = card(pieChart);
+        pieChart.setPrefHeight(260);
+        pieChart.setLegendVisible(true);
+        VBox pieCard = Styles.card(pieChart);
 
         // Line chart
         CategoryAxis xAxis = new CategoryAxis(); xAxis.setLabel("Month");
         NumberAxis   yAxis = new NumberAxis();   yAxis.setLabel("Amount");
         lineChart = new LineChart<>(xAxis, yAxis);
         lineChart.setTitle("Monthly Overview");
-        lineChart.setPrefHeight(250);
+        lineChart.setPrefHeight(260);
+        lineChart.setStyle("-fx-background-color: transparent;");
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Expenses");
@@ -146,45 +410,46 @@ class DashboardView {
                 new XYChart.Data<>("Jan", 400), new XYChart.Data<>("Feb", 600),
                 new XYChart.Data<>("Mar", 350), new XYChart.Data<>("Apr", 800));
         lineChart.getData().add(series);
-        VBox lineCard = card(lineChart);
+        VBox lineCard = Styles.card(lineChart);
 
         // Grid
         GridPane grid = new GridPane();
-        grid.setHgap(15); grid.setVgap(15); grid.setPadding(new Insets(20));
+        grid.setHgap(16); grid.setVgap(16); grid.setPadding(new Insets(24));
         grid.add(balCard,  0, 0);
         grid.add(pieCard,  1, 0);
         grid.add(lineCard, 0, 1, 2, 1);
 
-        ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(40);
-        ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(60);
+        ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(38);
+        ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(62);
         grid.getColumnConstraints().addAll(c1, c2);
 
         ScrollPane scroll = new ScrollPane(grid);
         scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: #f4f6f8; -fx-background-color: #f4f6f8;");
+        scroll.setStyle("-fx-background: " + Styles.BG + "; -fx-background-color: " + Styles.BG + ";");
 
         BorderPane root = new BorderPane();
         root.setLeft(sidebar);
         root.setCenter(scroll);
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
 
-        return new Scene(root, 900, 620);
-    }
-
-    private VBox card(javafx.scene.Node content) {
-        VBox box = new VBox(content);
-        box.setPadding(new Insets(15));
-        box.setStyle("-fx-background-color: white; -fx-background-radius: 10; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 3);");
-        return box;
+        return new Scene(root, 980, 680);
     }
 
     private Button sidebarBtn(String text) {
         Button b = new Button(text);
-        b.setPrefWidth(150);
+        b.setPrefWidth(160);
         b.setAlignment(Pos.CENTER_LEFT);
-        b.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 12;");
-        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 12; -fx-background-radius: 6;"));
-        b.setOnMouseExited(e  -> b.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 12;"));
+        b.setStyle("-fx-background-color: transparent; -fx-text-fill: #B0B8C8; "
+                + "-fx-font-size: 13px; -fx-font-family: '" + Styles.FONT + "'; "
+                + "-fx-padding: 9 14; -fx-background-radius: 6;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: rgba(255,255,255,0.08); "
+                + "-fx-text-fill: white; -fx-font-size: 13px; "
+                + "-fx-font-family: '" + Styles.FONT + "'; "
+                + "-fx-padding: 9 14; -fx-background-radius: 6;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: transparent; "
+                + "-fx-text-fill: #B0B8C8; -fx-font-size: 13px; "
+                + "-fx-font-family: '" + Styles.FONT + "'; "
+                + "-fx-padding: 9 14; -fx-background-radius: 6;"));
         return b;
     }
 
@@ -213,18 +478,16 @@ class TransactionView {
     public TransactionView(Stage stage) { this.stage = stage; }
 
     public Scene getScene() {
-        Label title = new Label("📋 Transactions");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#2c3e50"));
+        Label title = Styles.subheading("Transactions");
 
         filterField = new TextField();
-        filterField.setPromptText("🔍 Search transactions...");
-        filterField.setPrefWidth(250); filterField.setPrefHeight(35);
-        styleField(filterField);
+        filterField.setPromptText("Search transactions...");
+        filterField.setPrefWidth(260); filterField.setPrefHeight(36);
+        Styles.field(filterField);
 
-        addBtn    = actionBtn("➕ Add",    "#27ae60");
-        deleteBtn = actionBtn("🗑 Delete", "#e74c3c");
-        backBtn   = actionBtn("← Back",   "#95a5a6");
+        addBtn    = Styles.ghostBtn("Add",    Styles.SUCCESS);
+        deleteBtn = Styles.ghostBtn("Delete", Styles.DANGER);
+        backBtn   = Styles.ghostBtn("Back",   Styles.TEXT_MUTED);
 
         HBox controls = new HBox(10, filterField, addBtn, deleteBtn, backBtn);
         controls.setAlignment(Pos.CENTER_LEFT);
@@ -232,7 +495,7 @@ class TransactionView {
         tableView = new TableView<>();
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(tableView, Priority.ALWAYS);
-        tableView.setStyle("-fx-background-color: white;");
+        tableView.setStyle("-fx-background-color: white; -fx-border-color: " + Styles.BORDER + ";");
 
         TableColumn<Transaction, Integer> idCol     = new TableColumn<>("ID");     idCol.setCellValueFactory(new PropertyValueFactory<>("transactionId")); idCol.setMaxWidth(60);
         TableColumn<Transaction, String>  typeCol   = new TableColumn<>("Type");   typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
@@ -241,22 +504,11 @@ class TransactionView {
         TableColumn<Transaction, String>  descCol   = new TableColumn<>("Description"); descCol.setCellValueFactory(new PropertyValueFactory<>("description"));
         tableView.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol);
 
-        VBox root = new VBox(15, new HBox(10, title), controls, tableView);
-        root.setPadding(new Insets(25));
-        root.setStyle("-fx-background-color: #f4f6f8;");
+        VBox root = new VBox(16, title, controls, tableView);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
 
-        return new Scene(root, 900, 620);
-    }
-
-    private void styleField(Control f) {
-        f.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6; -fx-font-size: 13px;");
-    }
-
-    private Button actionBtn(String text, String color) {
-        Button b = new Button(text);
-        b.setPrefHeight(35);
-        b.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-size: 13px; -fx-background-radius: 8; -fx-padding: 6 14;");
-        return b;
+        return new Scene(root, 980, 680);
     }
 
     public TableView<Transaction> getTableView()  { return tableView; }
@@ -282,55 +534,44 @@ class BudgetView {
     public BudgetView(Stage stage) { this.stage = stage; }
 
     public Scene getScene() {
-        Label title = new Label("📊 Budget Manager");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#2c3e50"));
+        Label title = Styles.subheading("Budget Manager");
 
-        Label limitLbl = new Label("Monthly Budget Limit ($):");
-        limitLbl.setFont(Font.font("Arial", 13));
+        Label limitLbl = new Label("Monthly Budget Limit");
+        limitLbl.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 12));
+        limitLbl.setTextFill(Color.web(Styles.TEXT_DARK));
 
         limitField = new TextField();
         limitField.setPromptText("e.g. 2000");
-        limitField.setPrefHeight(38);
-        styleField(limitField);
+        limitField.setPrefHeight(42);
+        Styles.field(limitField);
 
-        saveBtn = actionBtn("💾 Save Budget", "#3498db");
-        backBtn = actionBtn("← Back",        "#95a5a6");
+        saveBtn = Styles.primaryBtn("Save Budget");
+        backBtn = Styles.ghostBtn("Back", Styles.TEXT_MUTED);
 
-        Label progressLbl = new Label("Spending Progress:");
-        progressLbl.setFont(Font.font("Arial", FontWeight.BOLD, 13));
+        Label progressLbl = new Label("Spending Progress");
+        progressLbl.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 13));
+        progressLbl.setTextFill(Color.web(Styles.TEXT_DARK));
 
         progressBar = new ProgressBar(0);
-        progressBar.setPrefWidth(400); progressBar.setPrefHeight(25);
-        progressBar.setStyle("-fx-accent: #27ae60;");
+        progressBar.setPrefWidth(440); progressBar.setPrefHeight(22);
+        progressBar.setStyle("-fx-accent: " + Styles.SUCCESS + ";");
 
-        statusLabel = new Label("Status: ON TRACK ✅");
-        statusLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        statusLabel.setTextFill(Color.web("#27ae60"));
+        statusLabel = new Label("Status: ON TRACK");
+        statusLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 14));
+        statusLabel.setTextFill(Color.web(Styles.SUCCESS));
 
-        VBox card = new VBox(15, limitLbl, limitField,
-                new HBox(10, saveBtn, backBtn), new Separator(),
+        VBox card = Styles.card(
+                limitLbl, limitField,
+                new HBox(10, saveBtn, backBtn),
+                new Separator(),
                 progressLbl, progressBar, statusLabel);
-        card.setPadding(new Insets(30)); card.setMaxWidth(500);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 4);");
+        card.setMaxWidth(520);
 
-        VBox root = new VBox(20, title, card);
-        root.setPadding(new Insets(30));
-        root.setStyle("-fx-background-color: #f4f6f8;");
+        VBox root = new VBox(22, title, card);
+        root.setPadding(new Insets(32));
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
 
-        return new Scene(root, 700, 450);
-    }
-
-    private void styleField(Control f) {
-        f.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6; -fx-font-size: 13px;");
-    }
-
-    private Button actionBtn(String text, String color) {
-        Button b = new Button(text);
-        b.setPrefHeight(38);
-        b.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-size: 13px; -fx-background-radius: 8; -fx-padding: 6 16;");
-        return b;
+        return new Scene(root, 780, 480);
     }
 
     public TextField   getLimitField()  { return limitField; }
@@ -357,68 +598,65 @@ class GoalView {
     public GoalView(Stage stage) { this.stage = stage; }
 
     public Scene getScene() {
-        Label title = new Label("🎯 Goals");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#2c3e50"));
+        Label title = Styles.subheading("Goals");
 
         Label formTitle = new Label("Create New Goal");
-        formTitle.setFont(Font.font("Arial", FontWeight.BOLD, 15));
+        formTitle.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 14));
+        formTitle.setTextFill(Color.web(Styles.TEXT_DARK));
 
-        nameField = new TextField(); nameField.setPromptText("Goal name (e.g. Buy a car)"); styleField(nameField);
-        targetField = new TextField(); targetField.setPromptText("Target amount ($)"); styleField(targetField);
+        nameField = new TextField(); nameField.setPromptText("Goal name (e.g. Buy a car)"); Styles.field(nameField);
+        targetField = new TextField(); targetField.setPromptText("Target amount ($)"); Styles.field(targetField);
 
         deadlinePicker = new DatePicker();
-        deadlinePicker.setPromptText("Deadline"); deadlinePicker.setPrefHeight(38);
+        deadlinePicker.setPromptText("Deadline"); deadlinePicker.setPrefHeight(42);
 
-        addGoalBtn = actionBtn("➕ Add Goal", "#27ae60");
-        backBtn    = actionBtn("← Back",     "#95a5a6");
+        addGoalBtn = Styles.ghostBtn("Add Goal", Styles.SUCCESS);
+        backBtn    = Styles.ghostBtn("Back",     Styles.TEXT_MUTED);
 
         GridPane form = new GridPane();
-        form.setHgap(10); form.setVgap(10);
-        form.add(new Label("Name:"),     0, 0); form.add(nameField,       1, 0);
-        form.add(new Label("Target:"),   0, 1); form.add(targetField,     1, 1);
-        form.add(new Label("Deadline:"), 0, 2); form.add(deadlinePicker,  1, 2);
+        form.setHgap(12); form.setVgap(10);
+        form.add(fl("Name"),     0, 0); form.add(nameField,      1, 0);
+        form.add(fl("Target"),   0, 1); form.add(targetField,    1, 1);
+        form.add(fl("Deadline"), 0, 2); form.add(deadlinePicker, 1, 2);
         form.add(new HBox(10, addGoalBtn, backBtn), 1, 3);
 
+        ColumnConstraints cc1 = new ColumnConstraints(); cc1.setMinWidth(80);
+        ColumnConstraints cc2 = new ColumnConstraints(); cc2.setHgrow(Priority.ALWAYS);
+        form.getColumnConstraints().addAll(cc1, cc2);
+
         Label progressTitle = new Label("Update Progress");
-        progressTitle.setFont(Font.font("Arial", FontWeight.BOLD, 15));
+        progressTitle.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 14));
+        progressTitle.setTextFill(Color.web(Styles.TEXT_DARK));
 
         contributionField = new TextField();
-        contributionField.setPromptText("Contribution amount ($)"); styleField(contributionField);
+        contributionField.setPromptText("Contribution amount ($)"); Styles.field(contributionField);
 
-        updateBtn = actionBtn("📈 Update", "#3498db");
+        updateBtn = Styles.ghostBtn("Update", Styles.PRIMARY);
 
         progressBar = new ProgressBar(0);
-        progressBar.setPrefWidth(400); progressBar.setPrefHeight(22);
-        progressBar.setStyle("-fx-accent: #3498db;");
+        progressBar.setPrefWidth(420); progressBar.setPrefHeight(20);
+        progressBar.setStyle("-fx-accent: " + Styles.PRIMARY + ";");
 
         statusLabel = new Label("Progress: 0%");
-        statusLabel.setFont(Font.font("Arial", FontWeight.BOLD, 13));
-        statusLabel.setTextFill(Color.web("#3498db"));
+        statusLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 13));
+        statusLabel.setTextFill(Color.web(Styles.PRIMARY));
 
-        VBox card = new VBox(20, formTitle, form, new Separator(),
+        VBox card = Styles.card(formTitle, form, new Separator(),
                 progressTitle, contributionField, updateBtn, progressBar, statusLabel);
-        card.setPadding(new Insets(25)); card.setMaxWidth(500);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 4);");
+        card.setMaxWidth(540);
 
-        VBox root = new VBox(20, title, card);
-        root.setPadding(new Insets(25));
-        root.setStyle("-fx-background-color: #f4f6f8;");
+        VBox root = new VBox(22, title, card);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
 
-        return new Scene(root, 700, 560);
+        return new Scene(root, 780, 590);
     }
 
-    private void styleField(Control f) {
-        f.setPrefHeight(38);
-        f.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6; -fx-font-size: 13px;");
-    }
-
-    private Button actionBtn(String text, String color) {
-        Button b = new Button(text);
-        b.setPrefHeight(38);
-        b.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-size: 13px; -fx-background-radius: 8; -fx-padding: 6 14;");
-        return b;
+    private Label fl(String text) {
+        Label l = new Label(text);
+        l.setFont(Font.font(Styles.FONT, 13));
+        l.setTextFill(Color.web(Styles.TEXT_MUTED));
+        return l;
     }
 
     public ProgressBar getProgressBar()       { return progressBar; }
@@ -447,17 +685,16 @@ class ReportView {
     public ReportView(Stage stage) { this.stage = stage; }
 
     public Scene getScene() {
-        Label title = new Label("📄 Reports");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#2c3e50"));
+        Label title = Styles.subheading("Reports");
 
-        generateBtn = actionBtn("📊 Generate Report", "#3498db");
-        exportBtn   = actionBtn("⬇ Export CSV",      "#27ae60");
-        backBtn     = actionBtn("← Back",             "#95a5a6");
+        generateBtn = Styles.ghostBtn("Generate Report", Styles.PRIMARY);
+        exportBtn   = Styles.ghostBtn("Export CSV",      Styles.SUCCESS);
+        backBtn     = Styles.ghostBtn("Back",             Styles.TEXT_MUTED);
 
         summaryTable = new TableView<>();
         summaryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(summaryTable, Priority.ALWAYS);
+        summaryTable.setStyle("-fx-background-color: white;");
 
         TableColumn<Transaction, Integer> idCol     = new TableColumn<>("ID");     idCol.setCellValueFactory(new PropertyValueFactory<>("transactionId"));
         TableColumn<Transaction, String>  typeCol   = new TableColumn<>("Type");   typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
@@ -467,21 +704,14 @@ class ReportView {
         summaryTable.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol);
 
         totalLabel = new Label("Total Expense: $0.00");
-        totalLabel.setFont(Font.font("Arial", FontWeight.BOLD, 15));
-        totalLabel.setTextFill(Color.web("#e74c3c"));
+        totalLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 15));
+        totalLabel.setTextFill(Color.web(Styles.DANGER));
 
-        VBox root = new VBox(15, title, new HBox(10, generateBtn, exportBtn, backBtn), summaryTable, totalLabel);
-        root.setPadding(new Insets(25));
-        root.setStyle("-fx-background-color: #f4f6f8;");
+        VBox root = new VBox(16, title, new HBox(10, generateBtn, exportBtn, backBtn), summaryTable, totalLabel);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
 
-        return new Scene(root, 900, 580);
-    }
-
-    private Button actionBtn(String text, String color) {
-        Button b = new Button(text);
-        b.setPrefHeight(38);
-        b.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-size: 13px; -fx-background-radius: 8; -fx-padding: 6 14;");
-        return b;
+        return new Scene(root, 980, 640);
     }
 
     public TableView<Transaction> getSummaryTable() { return summaryTable; }
