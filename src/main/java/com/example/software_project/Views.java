@@ -322,7 +322,10 @@ class DashboardView {
     private Label                      balanceLabel;
     private PieChart                   pieChart;
     private LineChart<String, Number>  lineChart;
-    private Button navTransactions, navBudget, navGoals, navReports, navLogout;
+    // FIX: added navNotifications for the Notifications screen nav button
+    private Button navTransactions, navBudget, navGoals, navReports, navNotifications, navLogout;
+    // FIX: recentTable displays the last 5 transactions (getRecentTransactions spec requirement)
+    private TableView<Transaction>     recentTable;
 
     public DashboardView(Stage stage) { this.stage = stage; }
 
@@ -331,11 +334,13 @@ class DashboardView {
         appName.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 16));
         appName.setTextFill(Color.WHITE);
 
-        navTransactions = sidebarBtn("Transactions");
-        navBudget       = sidebarBtn("Budget");
-        navGoals        = sidebarBtn("Goals");
-        navReports      = sidebarBtn("Reports");
-        navLogout       = sidebarBtn("Logout");
+        navTransactions  = sidebarBtn("Transactions");
+        navBudget        = sidebarBtn("Budget");
+        navGoals         = sidebarBtn("Goals");
+        navReports       = sidebarBtn("Reports");
+        // FIX: Notifications nav button added to sidebar
+        navNotifications = sidebarBtn("Notifications");
+        navLogout        = sidebarBtn("Logout");
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -372,11 +377,42 @@ class DashboardView {
         lineChart.setStyle("-fx-background-color: transparent;");
         VBox lineCard = Styles.card(lineChart);
 
+        // FIX: Recent Transactions table — fulfils getRecentTransactions(userId) spec requirement.
+        //      Controller populates via loadRecentTransactions() (last 5 transactions).
+        recentTable = new TableView<>();
+        recentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        recentTable.setPrefHeight(200);
+        recentTable.setStyle("-fx-background-color: " + Styles.CARD + ";");
+        recentTable.setPlaceholder(new Label("No recent transactions"));
+
+        TableColumn<Transaction, String> rtDateCol = new TableColumn<>("Date");
+        rtDateCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(cd.getValue().getDate().toString()));
+
+        TableColumn<Transaction, String> rtTypeCol = new TableColumn<>("Type");
+        rtTypeCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(cd.getValue().getType()));
+
+        TableColumn<Transaction, String> rtAmtCol = new TableColumn<>("Amount");
+        rtAmtCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(cd.getValue().getAmount().toPlainString()));
+
+        TableColumn<Transaction, String> rtDescCol = new TableColumn<>("Description");
+        rtDescCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(cd.getValue().getDescription()));
+
+        recentTable.getColumns().addAll(rtDateCol, rtTypeCol, rtAmtCol, rtDescCol);
+
+        Label recentTitle = Styles.plainLabel("Recent Transactions");
+        recentTitle.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 14));
+        VBox recentCard = Styles.card(recentTitle, recentTable);
+
         GridPane grid = new GridPane();
         grid.setHgap(16); grid.setVgap(16); grid.setPadding(new Insets(24));
-        grid.add(balCard,  0, 0);
-        grid.add(pieCard,  1, 0);
-        grid.add(lineCard, 0, 1, 2, 1);
+        grid.add(balCard,    0, 0);
+        grid.add(pieCard,    1, 0);
+        grid.add(recentCard, 0, 1, 2, 1); // recent transactions spans full width
+        grid.add(lineCard,   0, 2, 2, 1); // line chart spans full width
 
         ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(38);
         ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(62);
@@ -414,15 +450,18 @@ class DashboardView {
         return b;
     }
 
-    public Label                    getBalanceLabel()    { return balanceLabel; }
-    public PieChart                 getPieChart()        { return pieChart; }
-    public LineChart<String,Number> getLineChart()       { return lineChart; }
-    public Button                   getNavTransactions() { return navTransactions; }
-    public Button                   getNavBudget()       { return navBudget; }
-    public Button                   getNavGoals()        { return navGoals; }
-    public Button                   getNavReports()      { return navReports; }
-    public Button                   getNavLogout()       { return navLogout; }
-    public Stage                    getStage()           { return stage; }
+    public Label                    getBalanceLabel()     { return balanceLabel; }
+    public PieChart                 getPieChart()         { return pieChart; }
+    public LineChart<String,Number> getLineChart()        { return lineChart; }
+    public TableView<Transaction>   getRecentTable()      { return recentTable; }
+    public Button                   getNavTransactions()  { return navTransactions; }
+    public Button                   getNavBudget()        { return navBudget; }
+    public Button                   getNavGoals()         { return navGoals; }
+    public Button                   getNavReports()       { return navReports; }
+    // FIX: expose navNotifications so DashboardController can bind its action
+    public Button                   getNavNotifications() { return navNotifications; }
+    public Button                   getNavLogout()        { return navLogout; }
+    public Stage                    getStage()            { return stage; }
 }
 
 // ─────────────────────────────────────────────
@@ -789,4 +828,54 @@ class ReportView {
     public Button                 getExportBtn()    { return exportBtn; }
     public Button                 getBackBtn()      { return backBtn; }
     public Stage                  getStage()        { return stage; }
+}
+
+// ─────────────────────────────────────────────
+//  NOTIFICATION VIEW
+//  Displays unread/read notifications for the current user.
+//  Controller populates ListView via requestNotifications().
+//  "Mark as Read" button triggers the markAsRead() flow.
+// ─────────────────────────────────────────────
+
+class NotificationView {
+
+    private Stage           stage;
+    private ListView<String> listView;
+    private Button          markReadBtn, markAllBtn, backBtn;
+
+    public NotificationView(Stage stage) { this.stage = stage; }
+
+    public Scene getScene() {
+        Label title = Styles.subheading("Notifications");
+
+        // FIX: empty-state placeholder is set here; controller overwrites when items are present
+        listView = new ListView<>();
+        listView.setPrefHeight(400);
+        listView.setPlaceholder(new Label("No new notifications"));
+        listView.setStyle("-fx-background-color: " + Styles.CARD + ";");
+        VBox.setVgrow(listView, Priority.ALWAYS);
+
+        markReadBtn = Styles.ghostBtn("Mark Selected as Read", Styles.PRIMARY);
+        markAllBtn  = Styles.ghostBtn("Mark All as Read",      Styles.SUCCESS);
+        backBtn     = Styles.ghostBtn("Back",                  Styles.TEXT_MUTED);
+
+        HBox buttons = new HBox(10, markReadBtn, markAllBtn, backBtn);
+        buttons.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label hint = Styles.muted("Click a notification then press \"Mark Selected as Read\", or use \"Mark All as Read\".");
+
+        VBox root = new VBox(16, title, hint, listView, buttons);
+        root.setPadding(new javafx.geometry.Insets(28));
+        root.setStyle("-fx-background-color: " + Styles.BG + ";");
+
+        Scene scene = new Scene(root, 780, 560);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        return scene;
+    }
+
+    public ListView<String> getListView()     { return listView; }
+    public Button           getMarkReadBtn()  { return markReadBtn; }
+    public Button           getMarkAllBtn()   { return markAllBtn; }
+    public Button           getBackBtn()      { return backBtn; }
+    public Stage            getStage()        { return stage; }
 }

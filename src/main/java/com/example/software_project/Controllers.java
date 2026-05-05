@@ -173,6 +173,10 @@ class DashboardController {
         bindEvents();
         loadData();
         loadCharts();
+        // FIX: check budget limits on every dashboard entry (not only after adding a transaction)
+        checkBudgetLimits();
+        // FIX: populate the recent-transactions table as required by the data-aggregation spec
+        loadRecentTransactions();
     }
 
     public void loadData() {
@@ -185,6 +189,55 @@ class DashboardController {
                 .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         view.getBalanceLabel().setText(currentUser.getCurrency() + " " + income.subtract(expense).toPlainString());
+    }
+
+    // FIX: required by spec — check all budget limits on dashboard load, not just after transactions.
+    //      Creates Notifications for any budget that is EXCEEDED or NEAR_LIMIT.
+    public void checkBudgetLimits() {
+        for (Budget b : currentUser.getBudgets()) {
+            // Recalculate spent so the check reflects the latest transactions
+            BigDecimal totalSpent = currentUser.getTransactions().stream()
+                    .filter(t -> "expense".equalsIgnoreCase(t.getType()))
+                    .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            b.setSpentAmount(totalSpent);
+
+            if (b.getStatus() == BudgetStatus.EXCEEDED) {
+                String msg = "⚠ Budget EXCEEDED! Spent: " + b.getSpentAmount().toPlainString()
+                        + " / Limit: " + b.getTotalExpense().toPlainString();
+                // Only create a new notification if one with the same message doesn't already exist
+                boolean alreadyNotified = currentUser.getNotifications().stream()
+                        .anyMatch(n -> n.getMessage().equals(msg));
+                if (!alreadyNotified) {
+                    int nId = currentUser.getNotifications().size() + 1;
+                    currentUser.addNotification(
+                            new Notification(nId, msg, currentUser, NotificationType.BUDGET_EXCEEDED));
+                }
+                // Show warning in UI as required by the "IF exceeded → sendWarning()" flow
+                Alert warn = new Alert(Alert.AlertType.WARNING);
+                warn.setTitle("Budget Exceeded"); warn.setHeaderText(null);
+                warn.setContentText(msg); warn.showAndWait();
+
+            } else if (b.getStatus() == BudgetStatus.NEAR_LIMIT) {
+                String msg = "⚠ Budget NEAR LIMIT! Spent: " + b.getSpentAmount().toPlainString()
+                        + " / Limit: " + b.getTotalExpense().toPlainString();
+                boolean alreadyNotified = currentUser.getNotifications().stream()
+                        .anyMatch(n -> n.getMessage().equals(msg));
+                if (!alreadyNotified) {
+                    int nId = currentUser.getNotifications().size() + 1;
+                    currentUser.addNotification(
+                            new Notification(nId, msg, currentUser, NotificationType.BUDGET_NEAR_LIMIT));
+                }
+            }
+        }
+    }
+
+    // FIX: populate the dashboard recent-transactions table (last 5 transactions).
+    //      This fulfils the spec step: getRecentTransactions(userId) → displayDashboard().
+    public void loadRecentTransactions() {
+        java.util.List<Transaction> all = currentUser.getTransactions();
+        int from = Math.max(0, all.size() - 5);
+        java.util.List<Transaction> recent = all.subList(from, all.size());
+        view.getRecentTable().setItems(FXCollections.observableArrayList(recent));
     }
 
     public void loadCharts() {
@@ -217,11 +270,13 @@ class DashboardController {
     }
 
     private void bindEvents() {
-        view.getNavTransactions().setOnAction(e -> new TransactionController(stage, currentUser).show());
-        view.getNavBudget()      .setOnAction(e -> new BudgetController(stage, currentUser).show());
-        view.getNavGoals()       .setOnAction(e -> new GoalController(stage, currentUser).show());
-        view.getNavReports()     .setOnAction(e -> new ReportController(stage, currentUser).show());
-        view.getNavLogout()      .setOnAction(e -> new LoginController(stage).show());
+        view.getNavTransactions() .setOnAction(e -> new TransactionController(stage, currentUser).show());
+        view.getNavBudget()       .setOnAction(e -> new BudgetController(stage, currentUser).show());
+        view.getNavGoals()        .setOnAction(e -> new GoalController(stage, currentUser).show());
+        view.getNavReports()      .setOnAction(e -> new ReportController(stage, currentUser).show());
+        // FIX: wire Notifications navigation button (was missing entirely)
+        view.getNavNotifications().setOnAction(e -> new NotificationController(stage, currentUser).show());
+        view.getNavLogout()       .setOnAction(e -> new LoginController(stage).show());
     }
 }
 
@@ -372,24 +427,31 @@ class TransactionController {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 activeBudget.setSpentAmount(totalSpent);
 
-                // FIX: Show an alert if budget is now exceeded
+                // FIX: Show an alert AND create a persisted Notification so the
+                //      Notifications screen can display it later (required flow).
                 if (activeBudget.getStatus() == BudgetStatus.EXCEEDED) {
-                    Alert warn = new Alert(Alert.AlertType.WARNING);
-                    warn.setTitle("Budget Exceeded");
-                    warn.setHeaderText(null);
-                    warn.setContentText("⚠ Your budget limit of "
+                    String msg = "⚠ Your budget limit of "
                             + activeBudget.getTotalExpense().toPlainString()
                             + " has been exceeded! Spent: "
-                            + activeBudget.getSpentAmount().toPlainString());
-                    warn.showAndWait();
-                } else if (activeBudget.getStatus() == BudgetStatus.NEAR_LIMIT) {
+                            + activeBudget.getSpentAmount().toPlainString();
                     Alert warn = new Alert(Alert.AlertType.WARNING);
-                    warn.setTitle("Budget Near Limit");
-                    warn.setHeaderText(null);
-                    warn.setContentText("⚠ You are near your budget limit! Spent: "
+                    warn.setTitle("Budget Exceeded"); warn.setHeaderText(null);
+                    warn.setContentText(msg); warn.showAndWait();
+                    // Persist notification to user's notification list
+                    int nId = currentUser.getNotifications().size() + 1;
+                    currentUser.addNotification(
+                            new Notification(nId, msg, currentUser, NotificationType.BUDGET_EXCEEDED));
+                } else if (activeBudget.getStatus() == BudgetStatus.NEAR_LIMIT) {
+                    String msg = "⚠ You are near your budget limit! Spent: "
                             + activeBudget.getSpentAmount().toPlainString()
-                            + " / Limit: " + activeBudget.getTotalExpense().toPlainString());
-                    warn.showAndWait();
+                            + " / Limit: " + activeBudget.getTotalExpense().toPlainString();
+                    Alert warn = new Alert(Alert.AlertType.WARNING);
+                    warn.setTitle("Budget Near Limit"); warn.setHeaderText(null);
+                    warn.setContentText(msg); warn.showAndWait();
+                    // Persist notification to user's notification list
+                    int nId = currentUser.getNotifications().size() + 1;
+                    currentUser.addNotification(
+                            new Notification(nId, msg, currentUser, NotificationType.BUDGET_NEAR_LIMIT));
                 }
             }
 
@@ -471,6 +533,11 @@ class BudgetController {
                     .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             budget.setSpentAmount(totalExpenses);
             checkLimit();
+
+            // FIX: show confirmation then redirect to dashboard (required flow: save → success → redirect)
+            alertInfo("Budget Saved", "Your budget limit has been saved successfully.");
+            new DashboardController(stage, currentUser).show();
+
         } catch (NumberFormatException ex) {
             alert("Invalid Input", "Please enter a valid number.");
         }
@@ -503,10 +570,8 @@ class BudgetController {
         }
     }
 
-    private void alert(String title, String msg) {
-        Alert a = new Alert(Alert.AlertType.WARNING);
-        a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait();
-    }
+    private void alert(String title, String msg)     { Alert a = new Alert(Alert.AlertType.WARNING);     a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
+    private void alertInfo(String title, String msg) { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
 }
 
 // ─────────────────────────────────────────────
@@ -647,6 +712,84 @@ class GoalController {
 
     private void alert(String title, String msg)     { Alert a = new Alert(Alert.AlertType.WARNING);     a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
     private void alertInfo(String title, String msg) { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
+}
+
+// ─────────────────────────────────────────────
+//  NOTIFICATION CONTROLLER
+//  Flow: UI → requestNotifications() → user's list → display
+//        click → markAsRead() → update list → refresh UI
+// ─────────────────────────────────────────────
+
+class NotificationController {
+
+    private NotificationView view;
+    private Stage            stage;
+    private User             currentUser;
+
+    public NotificationController(Stage stage, User user) {
+        this.stage       = stage;
+        this.currentUser = user;
+        this.view        = new NotificationView(stage);
+    }
+
+    public void show() {
+        stage.setScene(view.getScene());
+        stage.setTitle("Notifications");
+        // FIX: requestNotifications() — load from user's notification list
+        requestNotifications();
+        bindEvents();
+    }
+
+    // FIX: required flow — UI → requestNotifications() → DB (user list) → display or "no notifications"
+    public void requestNotifications() {
+        java.util.List<Notification> notifs = currentUser.getNotifications();
+        if (notifs.isEmpty()) {
+            // FIX: required empty-state handling
+            view.getListView().setPlaceholder(new Label("No new notifications"));
+            view.getListView().getItems().clear();
+        } else {
+            view.getListView().getItems().setAll(
+                    notifs.stream()
+                            .map(n -> (n.isRead() ? "[Read]  " : "[Unread] ") + n.getMessage())
+                            .collect(java.util.stream.Collectors.toList()));
+        }
+    }
+
+    // FIX: required flow — UI click → markAsRead() → backend updated → UI refreshed AFTER success
+    private void markSelectedAsRead() {
+        int idx = view.getListView().getSelectionModel().getSelectedIndex();
+        if (idx < 0 || idx >= currentUser.getNotifications().size()) {
+            alert("No Selection", "Please select a notification to mark as read.");
+            return;
+        }
+        Notification n = currentUser.getNotifications().get(idx);
+        if (n.isRead()) {
+            alert("Already Read", "This notification has already been marked as read.");
+            return;
+        }
+        // Backend update first
+        n.markAsRead();
+        // UI refresh ONLY after backend success (no premature update)
+        requestNotifications();
+        view.getListView().getSelectionModel().select(idx);
+    }
+
+    // Mark every unread notification as read in one action
+    private void markAllAsRead() {
+        currentUser.getNotifications().forEach(n -> { if (!n.isRead()) n.markAsRead(); });
+        requestNotifications();
+    }
+
+    private void bindEvents() {
+        view.getMarkReadBtn()   .setOnAction(e -> markSelectedAsRead());
+        view.getMarkAllBtn()    .setOnAction(e -> markAllAsRead());
+        view.getBackBtn()       .setOnAction(e -> new DashboardController(stage, currentUser).show());
+    }
+
+    private void alert(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.WARNING);
+        a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait();
+    }
 }
 
 // ─────────────────────────────────────────────
