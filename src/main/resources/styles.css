@@ -1,0 +1,479 @@
+/* ============================================================
+   styles.css  —  Finance Tracker Global Stylesheet
+   Dark theme — Navy background, light text, high contrast
+   ============================================================ */
+
+/* ── Root / Scene background ── */
+.root {
+    -fx-background-color: #1A2030;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* ============================================================
+   LABELS
+   ============================================================ */
+
+.label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.label-muted {
+    -fx-text-fill: #9099A8;
+    -fx-font-size: 12px;
+}
+
+.label-heading {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.label-subheading {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+/* ============================================================
+   TEXT FIELDS & PASSWORD FIELDS
+   ============================================================ */
+
+.text-field,
+.password-field {
+    -fx-background-color: #2E3A50;
+    -fx-text-fill: #E8EBF0;
+    -fx-prompt-text-fill: #9099A8;
+    -fx-border-color: #3A4556;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 9 12;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.text-field:focused,
+.password-field:focused {
+    -fx-border-color: #5B8FCC;
+    -fx-border-width: 1.5;
+}
+
+/* ============================================================
+   COMBO BOX
+   ============================================================ */
+
+.combo-box {
+    -fx-background-color: #2E3A50;
+    -fx-border-color: #3A4556;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #E8EBF0;
+    -fx-background-color: #2E3A50;
+    -fx-font-size: 13px;
+    -fx-padding: 4 8;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #2E3A50;
+    -fx-border-color: #3A4556;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: #E8EBF0;
+    -fx-background-color: #2E3A50;
+    -fx-font-size: 13px;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #3A4A62;
+    -fx-text-fill: #E8EBF0;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #5B8FCC;
+    -fx-text-fill: #FFFFFF;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #9099A8;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.button {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+
+.button-primary {
+    -fx-background-color: #5B8FCC;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 0 22;
+}
+
+.button-primary:hover {
+    -fx-background-color: #4A78B5;
+    -fx-text-fill: #FFFFFF;
+}
+
+.button-ghost {
+    -fx-background-radius: 6;
+    -fx-padding: 6 16;
+    -fx-text-fill: #FFFFFF;
+}
+
+.button-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #5B8FCC;
+    -fx-font-size: 12px;
+    -fx-padding: 0;
+}
+
+.button-link:hover {
+    -fx-text-fill: #E07A5F;
+}
+
+.sidebar-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #9099A8;
+    -fx-font-size: 13px;
+    -fx-padding: 9 14;
+    -fx-background-radius: 6;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ============================================================
+   TABLE VIEW
+   ============================================================ */
+
+.table-view {
+    -fx-background-color: #242E42;
+    -fx-border-color: #3A4556;
+    -fx-border-width: 1;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.table-view .column-header {
+    -fx-background-color: #1E2A3A;
+    -fx-border-color: #3A4556;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.table-row-cell {
+    -fx-background-color: #242E42;
+    -fx-text-fill: #E8EBF0;
+    -fx-border-color: transparent transparent #2E3A50 transparent;
+    -fx-border-width: 1;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #1E2A3A;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #5B8FCC;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: #FFFFFF;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #2E3A50;
+}
+
+.table-row-cell:hover .table-cell {
+    -fx-text-fill: #E8EBF0;
+}
+
+.table-cell {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 13px;
+    -fx-padding: 6 10;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #9099A8;
+    -fx-font-size: 13px;
+}
+
+.table-view .filler,
+.table-view .corner {
+    -fx-background-color: #1E2A3A;
+}
+
+/* ============================================================
+   LIST VIEW
+   ============================================================ */
+
+.list-view {
+    -fx-background-color: #242E42;
+    -fx-border-color: #3A4556;
+    -fx-font-size: 13px;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.list-cell {
+    -fx-text-fill: #E8EBF0;
+    -fx-background-color: #242E42;
+    -fx-padding: 6 10;
+    -fx-font-size: 13px;
+}
+
+.list-cell:odd {
+    -fx-background-color: #1E2A3A;
+}
+
+.list-cell:selected {
+    -fx-background-color: #5B8FCC;
+    -fx-text-fill: #FFFFFF;
+}
+
+.list-cell:hover {
+    -fx-background-color: #2E3A50;
+    -fx-text-fill: #E8EBF0;
+}
+
+/* ============================================================
+   PIE CHART
+   ============================================================ */
+
+.chart {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-background-color: transparent;
+}
+
+.chart-title {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.chart-pie-label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.chart-legend-item {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 12px;
+}
+
+.chart-legend {
+    -fx-background-color: transparent;
+}
+
+/* ============================================================
+   LINE CHART
+   ============================================================ */
+
+.chart-plot-background {
+    -fx-background-color: #1E2A3A;
+}
+
+.chart-content {
+    -fx-background-color: transparent;
+}
+
+.axis-label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.axis .tick-label {
+    -fx-fill: #9099A8;
+    -fx-font-size: 11px;
+}
+
+.line-chart .chart-legend-item {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 12px;
+}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+
+.progress-bar .track {
+    -fx-background-color: #2E3A50;
+    -fx-background-radius: 4;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #5B8FCC;
+    -fx-background-radius: 4;
+    -fx-background-insets: 0;
+}
+
+/* ============================================================
+   DATE PICKER
+   ============================================================ */
+
+.date-picker {
+    -fx-background-color: #2E3A50;
+    -fx-border-color: #3A4556;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.date-picker .text-field {
+    -fx-text-fill: #E8EBF0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 13px;
+}
+
+.date-picker-popup {
+    -fx-background-color: #242E42;
+    -fx-border-color: #3A4556;
+}
+
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #5B8FCC;
+}
+
+.date-picker-popup .month-year-pane .label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.date-picker-popup .spinner .button .left-arrow,
+.date-picker-popup .spinner .button .right-arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+.date-picker-popup .day-name-cell,
+.date-picker-popup .week-number-cell {
+    -fx-text-fill: #9099A8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.date-picker-popup .day-cell {
+    -fx-text-fill: #E8EBF0;
+    -fx-background-color: #242E42;
+    -fx-font-size: 12px;
+}
+
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #2E3A50;
+    -fx-text-fill: #E8EBF0;
+}
+
+.date-picker-popup .day-cell:selected,
+.date-picker-popup .day-cell.selected {
+    -fx-background-color: #5B8FCC;
+    -fx-text-fill: #FFFFFF;
+}
+
+.date-picker-popup .today {
+    -fx-border-color: #5B8FCC;
+    -fx-text-fill: #5B8FCC;
+    -fx-font-weight: bold;
+}
+
+/* ============================================================
+   SCROLL PANE
+   ============================================================ */
+
+.scroll-pane {
+    -fx-background-color: #1A2030;
+    -fx-background: #1A2030;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: #1A2030;
+}
+
+/* ============================================================
+   SEPARATOR
+   ============================================================ */
+
+.separator .line {
+    -fx-border-color: #3A4556;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ============================================================
+   TOOLTIP
+   ============================================================ */
+
+.tooltip {
+    -fx-background-color: #111827;
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 12px;
+    -fx-background-radius: 4;
+    -fx-padding: 4 8;
+}
+
+/* ============================================================
+   ALERT DIALOGS
+   ============================================================ */
+
+.dialog-pane {
+    -fx-background-color: #242E42;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane .content.label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #1E2A3A;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #E8EBF0;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-background-color: #5B8FCC;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 13px;
+    -fx-background-radius: 6;
+    -fx-padding: 6 18;
+}
+
+.dialog-pane .button-bar .button:hover {
+    -fx-background-color: #4A78B5;
+}

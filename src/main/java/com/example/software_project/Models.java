@@ -78,6 +78,64 @@ class UserStore {
         sb.append("]");
         try { Files.writeString(Path.of(FILE), sb.toString()); }
         catch (Exception e) { System.err.println("UserStore save error: " + e.getMessage()); }
+
+        // Save transactions for each user to separate files
+        for (User u : users) {
+            saveTransactions(u);
+        }
+    }
+
+    /** Save user's transactions to transactions_<userId>.json */
+    public static void saveTransactions(User user) {
+        StringBuilder sb = new StringBuilder("[\n");
+        List<Transaction> txs = user.getTransactions();
+        for (int i = 0; i < txs.size(); i++) {
+            Transaction t = txs.get(i);
+            sb.append("  {")
+                    .append("\"id\":").append(t.getTransactionId()).append(", ")
+                    .append("\"type\":\"").append(esc(t.getType())).append("\", ")
+                    .append("\"amount\":\"").append(t.getAmount().toPlainString()).append("\", ")
+                    .append("\"date\":\"").append(t.getDate().toString()).append("\", ")
+                    .append("\"description\":\"").append(esc(t.getDescription())).append("\", ")
+                    .append("\"category\":\"").append(t.getCategory() != null ? esc(t.getCategory().getName()) : "General").append("\", ")
+                    .append("\"catType\":\"").append(t.getCategory() != null ? esc(t.getCategory().getType()) : esc(t.getType())).append("\"")
+                    .append("}");
+            if (i < txs.size() - 1) sb.append(",");
+            sb.append("\n");
+        }
+        sb.append("]");
+        try { Files.writeString(Path.of("transactions_" + user.getUserId() + ".json"), sb.toString()); }
+        catch (Exception e) { System.err.println("Transaction save error: " + e.getMessage()); }
+    }
+
+    /** Load transactions for a user from transactions_<userId>.json */
+    public static void loadTransactions(User user) {
+        // Clear first to avoid duplicates on re-login
+        user.getTransactions().clear();
+        Path p = Path.of("transactions_" + user.getUserId() + ".json");
+        if (!Files.exists(p)) return;
+        try {
+            String json = Files.readString(p).trim();
+            if (json.startsWith("[")) json = json.substring(1);
+            if (json.endsWith("]"))   json = json.substring(0, json.length() - 1);
+            String[] entries = json.split("\\},\\s*\\{");
+            for (String entry : entries) {
+                entry = entry.replaceAll("[{}]", "").trim();
+                if (entry.isEmpty()) continue;
+                Map<String, String> f = parseFields(entry);
+                int id = Integer.parseInt(f.getOrDefault("id", "0").trim());
+                String type   = f.getOrDefault("type", "expense");
+                BigDecimal amt = new BigDecimal(f.getOrDefault("amount", "0"));
+                LocalDate date = LocalDate.parse(f.getOrDefault("date", LocalDate.now().toString()));
+                String desc   = f.getOrDefault("description", "");
+                String catName= f.getOrDefault("category", "General");
+                String catType= f.getOrDefault("catType", type);
+                Category cat  = new Category(1, catName, catType);
+                user.addTransaction(new Transaction(id, type, amt, date, desc, user, cat));
+            }
+        } catch (Exception e) {
+            System.err.println("Transaction load error: " + e.getMessage());
+        }
     }
 
     private static String esc(String s) { return s == null ? "" : s.replace("\"", "\\\""); }
@@ -96,9 +154,13 @@ class UserStore {
     /** Authenticate. Returns null if credentials wrong. */
     public static User authenticate(String email, String password) {
         load();
-        for (User u : users)
-            if (u.getEmail().equalsIgnoreCase(email) && u.getPasswordHash().equals(password))
+        for (User u : users) {
+            if (u.getEmail().equalsIgnoreCase(email) && u.getPasswordHash().equals(password)) {
+                // Load persisted transactions for this user
+                loadTransactions(u);
                 return u;
+            }
+        }
         return null;
     }
 

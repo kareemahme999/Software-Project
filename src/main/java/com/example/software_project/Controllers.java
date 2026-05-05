@@ -24,7 +24,6 @@ public class Controllers extends Application {
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setResizable(false);
-        UserStore.load();  // pre-load users from file
         new LoginController(primaryStage).show();
     }
 
@@ -49,15 +48,17 @@ class LoginController {
 
     public void show() {
         stage.setScene(view.getScene());
-        stage.setTitle("Finance Tracker");
+        stage.setTitle("Finance Tracker - Login");
         stage.show();
         bindEvents();
     }
 
     private void bindEvents() {
-        view.getLoginBtn()     .setOnAction(e -> handleLogin());
+        view.getLoginBtn().setOnAction(e -> handleLogin());
         view.getPasswordField().setOnAction(e -> handleLogin());
-        view.getRegisterLink() .setOnAction(e -> new RegistrationController(stage).show());
+
+        // BUG FIX 1: registerLink was never wired — clicking "Create an account" did nothing
+        view.getRegisterLink().setOnAction(e -> new RegistrationController(stage).show());
     }
 
     private void handleLogin() {
@@ -65,10 +66,13 @@ class LoginController {
         String password = view.getPasswordField().getText().trim();
 
         if (email.isEmpty() || password.isEmpty()) {
-            alert(Alert.AlertType.WARNING, "Missing Fields", "Please enter your email and password.");
+            alert(Alert.AlertType.WARNING, "Missing Fields", "Please enter email and password.");
             return;
         }
 
+        // BUG FIX 2: was using a hardcoded demo User and only checking password,
+        //            completely ignoring the email field.
+        //            Now authenticates properly via UserStore (checks both email + password).
         User user = UserStore.authenticate(email, password);
         if (user != null) {
             new DashboardController(stage, user).show();
@@ -99,7 +103,7 @@ class RegistrationController {
 
     public void show() {
         stage.setScene(view.getScene());
-        stage.setTitle("Finance Tracker - Create Account");
+        stage.setTitle("Finance Tracker - Register");
         bindEvents();
     }
 
@@ -109,13 +113,12 @@ class RegistrationController {
     }
 
     private void handleRegister() {
-        String name     = view.getNameField()    .getText().trim();
-        String email    = view.getEmailField()   .getText().trim();
-        String password = view.getPasswordField().getText().trim();
-        String confirm  = view.getConfirmField() .getText().trim();
-        String currency = view.getCurrencyBox()  .getValue();
+        String name     = view.getNameField().getText().trim();
+        String email    = view.getEmailField().getText().trim();
+        String password = view.getPasswordField().getText();
+        String confirm  = view.getConfirmField().getText();
+        String currency = view.getCurrencyBox().getValue();
 
-        // Validation
         if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
             alert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all fields.");
             return;
@@ -133,14 +136,12 @@ class RegistrationController {
             return;
         }
 
-        boolean success = UserStore.register(name, email, password, currency);
-        if (success) {
-            alert(Alert.AlertType.INFORMATION, "Account Created",
-                    "Welcome, " + name + "! Your account has been created.\nYou can now sign in.");
+        boolean ok = UserStore.register(name, email, password, currency);
+        if (ok) {
+            alert(Alert.AlertType.INFORMATION, "Registered!", "Account created. You can now sign in.");
             new LoginController(stage).show();
         } else {
-            alert(Alert.AlertType.ERROR, "Email Taken",
-                    "An account with this email already exists.");
+            alert(Alert.AlertType.ERROR, "Email Taken", "An account with this email already exists.");
         }
     }
 
@@ -183,10 +184,11 @@ class DashboardController {
                 .filter(t -> "expense".equalsIgnoreCase(t.getType()))
                 .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        view.getBalanceLabel().setText(currentUser.getCurrency() + " " + income.subtract(expense));
+        view.getBalanceLabel().setText(currentUser.getCurrency() + " " + income.subtract(expense).toPlainString());
     }
 
     public void loadCharts() {
+        // Pie chart — spending by category
         Map<String, BigDecimal> byCategory = currentUser.getTransactions().stream()
                 .filter(t -> "expense".equalsIgnoreCase(t.getType()) && t.getCategory() != null)
                 .collect(Collectors.groupingBy(
@@ -199,6 +201,7 @@ class DashboardController {
                             .map(e -> new PieChart.Data(e.getKey(), e.getValue().doubleValue()))
                             .collect(Collectors.toList())));
 
+        // Line chart — expenses grouped by month
         Map<String, Double> monthly = currentUser.getTransactions().stream()
                 .filter(t -> "expense".equalsIgnoreCase(t.getType()))
                 .collect(Collectors.groupingBy(
@@ -232,6 +235,7 @@ class TransactionController {
     private Stage                        stage;
     private User                         currentUser;
     private ObservableList<Transaction>  data;
+    private FilteredList<Transaction>    filtered;
 
     public TransactionController(Stage stage, User user) {
         this.stage       = stage;
@@ -243,25 +247,38 @@ class TransactionController {
         stage.setScene(view.getScene());
         stage.setTitle("Transactions");
         data = FXCollections.observableArrayList(currentUser.getTransactions());
-        view.getTableView().setItems(data);
+
+        // BUG FIX 3: FilteredList must wrap `data` BEFORE setItems.
+        filtered = new FilteredList<>(data, t -> true);
+        view.getTableView().setItems(filtered);
+
         bindEvents();
     }
 
     private void bindEvents() {
-        FilteredList<Transaction> filtered = new FilteredList<>(data, t -> true);
+        // Live search — now also matches amount, date, and category
         view.getFilterField().textProperty().addListener((obs, old, val) ->
-                filtered.setPredicate(t -> val == null || val.isEmpty()
-                        || t.getDescription().toLowerCase().contains(val.toLowerCase())
-                        || t.getType().toLowerCase().contains(val.toLowerCase())));
-        view.getTableView().setItems(filtered);
+                filtered.setPredicate(t -> {
+                    if (val == null || val.isEmpty()) return true;
+                    String lower = val.toLowerCase();
+                    return t.getDescription().toLowerCase().contains(lower)
+                            || t.getType().toLowerCase().contains(lower)
+                            || t.getAmount().toPlainString().contains(lower)
+                            || t.getDate().toString().contains(lower)
+                            || (t.getCategory() != null && t.getCategory().getName().toLowerCase().contains(lower));
+                }));
 
         view.getAddBtn().setOnAction(e -> showAddDialog());
 
         view.getDeleteBtn().setOnAction(e -> {
             Transaction sel = view.getTableView().getSelectionModel().getSelectedItem();
             if (sel == null) { alert("No Selection", "Please select a transaction to delete."); return; }
+            // BUG FIX 4: remove from `data` (not from filtered) so the ObservableList
+            //            backing the FilteredList stays in sync with the user's list.
             currentUser.removeTransaction(sel);
             data.remove(sel);
+            // PERSIST: save after deletion
+            UserStore.saveTransactions(currentUser);
         });
 
         view.getBackBtn().setOnAction(e -> new DashboardController(stage, currentUser).show());
@@ -272,15 +289,21 @@ class TransactionController {
         dialog.setTitle("Add Transaction");
         dialog.setHeaderText("Enter transaction details");
 
-        TextField typeField   = new TextField(); typeField.setPromptText("income / expense");
-        TextField amountField = new TextField(); amountField.setPromptText("Amount");
+        // BUG FIX 5: type was a free TextField — any string could be entered.
+        //            Replaced with ComboBox to enforce only "income" or "expense".
+        ComboBox<String> typeBox = new ComboBox<>(FXCollections.observableArrayList("income", "expense"));
+        typeBox.setPromptText("Select type");
+        typeBox.setPrefWidth(200);
+
+        TextField amountField = new TextField(); amountField.setPromptText("Amount (e.g. 100.00)");
         TextField descField   = new TextField(); descField.setPromptText("Description");
-        TextField catField    = new TextField(); catField.setPromptText("Category");
+        // BUG FIX 6: empty category now defaults to "General" instead of crashing.
+        TextField catField    = new TextField(); catField.setPromptText("Category (optional, e.g. Food)");
 
         javafx.scene.layout.GridPane g = new javafx.scene.layout.GridPane();
         g.setHgap(10); g.setVgap(10);
         g.setPadding(new javafx.geometry.Insets(15));
-        g.add(new Label("Type:"),        0, 0); g.add(typeField,   1, 0);
+        g.add(new Label("Type:"),        0, 0); g.add(typeBox,     1, 0);
         g.add(new Label("Amount:"),      0, 1); g.add(amountField, 1, 1);
         g.add(new Label("Description:"), 0, 2); g.add(descField,   1, 2);
         g.add(new Label("Category:"),    0, 3); g.add(catField,    1, 3);
@@ -289,20 +312,50 @@ class TransactionController {
         ButtonType addType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(addType, ButtonType.CANCEL);
 
+        // Prevent JavaFX from auto-disabling the Add button
+        javafx.scene.Node addButton = dialog.getDialogPane().lookupButton(addType);
+        addButton.setDisable(false);
+        // Keep button always enabled — validation happens in resultConverter
+        typeBox.valueProperty().addListener((obs, o, n) -> addButton.setDisable(false));
+        amountField.textProperty().addListener((obs, o, n) -> addButton.setDisable(false));
+
         dialog.setResultConverter(btn -> {
             if (btn == addType) {
+                String type = typeBox.getValue();
+                if (type == null) {
+                    alert("Missing Type", "Please select income or expense.");
+                    return null;
+                }
+                if (amountField.getText().trim().isEmpty()) {
+                    alert("Missing Amount", "Please enter an amount.");
+                    return null;
+                }
                 try {
-                    Category cat = new Category(1, catField.getText(), typeField.getText());
-                    return new Transaction(data.size() + 1, typeField.getText(),
-                            new BigDecimal(amountField.getText()), LocalDate.now(),
-                            descField.getText(), currentUser, cat);
-                } catch (Exception ex) { alert("Invalid Input", "Please check your entries."); }
+                    BigDecimal amount = new BigDecimal(amountField.getText().trim());
+                    // BUG FIX 7: negative or zero amounts were silently accepted.
+                    if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                        alert("Invalid Amount", "Amount must be greater than zero.");
+                        return null;
+                    }
+                    int newId = currentUser.getTransactions().size() + 1;
+                    String catName = catField.getText().trim().isEmpty() ? "General" : catField.getText().trim();
+                    Category cat   = new Category(newId, catName, type);
+                    String   desc  = descField.getText().trim().isEmpty() ? "-" : descField.getText().trim();
+                    return new Transaction(newId, type, amount, LocalDate.now(), desc, currentUser, cat);
+                } catch (NumberFormatException ex) {
+                    alert("Invalid Amount", "Please enter a valid number (e.g. 100.00).");
+                }
             }
             return null;
         });
 
         Optional<Transaction> result = dialog.showAndWait();
-        result.ifPresent(t -> { currentUser.addTransaction(t); data.add(t); });
+        result.ifPresent(t -> {
+            currentUser.addTransaction(t);
+            data.add(t);
+            // PERSIST: save transactions to disk immediately
+            UserStore.saveTransactions(currentUser);
+        });
     }
 
     private void alert(String title, String msg) {
@@ -349,15 +402,30 @@ class BudgetController {
         if (text.isEmpty()) { alert("Missing Input", "Please enter a budget limit."); return; }
         try {
             BigDecimal limit = new BigDecimal(text);
-            if (budget == null) { budget = new Budget(1, "Monthly", limit, currentUser); currentUser.addBudget(budget); }
-            else budget.setTotalExpense(limit);
+
+            // BUG FIX 8: zero or negative budget limit was accepted silently.
+            if (limit.compareTo(BigDecimal.ZERO) <= 0) {
+                alert("Invalid Input", "Budget limit must be greater than zero.");
+                return;
+            }
+
+            if (budget == null) {
+                // BUG FIX 9: budget ID was always hardcoded as 1.
+                int newId = currentUser.getBudgets().size() + 1;
+                budget = new Budget(newId, "Monthly", limit, currentUser);
+                currentUser.addBudget(budget);
+            } else {
+                budget.setTotalExpense(limit);
+            }
 
             BigDecimal totalExpenses = currentUser.getTransactions().stream()
                     .filter(t -> "expense".equalsIgnoreCase(t.getType()))
                     .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             budget.setSpentAmount(totalExpenses);
             checkLimit();
-        } catch (NumberFormatException ex) { alert("Invalid Input", "Please enter a valid number."); }
+        } catch (NumberFormatException ex) {
+            alert("Invalid Input", "Please enter a valid number.");
+        }
     }
 
     public void checkLimit() {
@@ -366,19 +434,24 @@ class BudgetController {
                 ? budget.getSpentAmount().doubleValue() / budget.getTotalExpense().doubleValue() : 0;
         view.getProgressBar().setProgress(Math.min(ratio, 1.0));
 
+        // Update the spent vs limit label
+        view.getSpentLabel().setText(
+                "Spent: " + budget.getSpentAmount().toPlainString()
+                        + " / Limit: " + budget.getTotalExpense().toPlainString());
+
         switch (budget.getStatus()) {
             case ON_TRACK:
                 view.getStatusLabel().setText("Status: ON TRACK");
-                view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.SUCCESS + "; -fx-font-weight: bold;");
-                view.getProgressBar().setStyle("-fx-accent: " + Styles.SUCCESS + ";"); break;
+                view.getStatusLabel().setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #27ae60;"); break;
             case NEAR_LIMIT:
-                view.getStatusLabel().setText("Status: NEAR LIMIT");
-                view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.WARNING + "; -fx-font-weight: bold;");
-                view.getProgressBar().setStyle("-fx-accent: " + Styles.WARNING + ";"); break;
+                view.getStatusLabel().setText("Status: NEAR LIMIT ⚠");
+                view.getStatusLabel().setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #f39c12;"); break;
             case EXCEEDED:
-                view.getStatusLabel().setText("Status: EXCEEDED");
-                view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.DANGER + "; -fx-font-weight: bold;");
-                view.getProgressBar().setStyle("-fx-accent: " + Styles.DANGER + ";"); break;
+                view.getStatusLabel().setText("Status: EXCEEDED ✗");
+                view.getStatusLabel().setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #e74c3c;"); break;
         }
     }
 
@@ -408,15 +481,45 @@ class GoalController {
     public void show() {
         stage.setScene(view.getScene());
         stage.setTitle("Goals");
-        if (!currentUser.getGoals().isEmpty()) { currentGoal = currentUser.getGoals().get(0); refreshProgress(); }
+        // Populate the ListView with existing goals
+        for (Goal g : currentUser.getGoals()) {
+            view.getGoalListView().getItems().add(g.getName() + " — Target: " + g.getTargetAmount() + " | " + g.getStatus());
+        }
+        // BUG FIX 10: always loaded index 0, now loads the most recent goal.
+        if (!currentUser.getGoals().isEmpty()) {
+            currentGoal = currentUser.getGoals().get(currentUser.getGoals().size() - 1);
+            view.getGoalListView().getSelectionModel().selectLast();
+            refreshProgress();
+        }
         bindEvents();
     }
 
     private void bindEvents() {
+        // Wire ListView selection → set currentGoal and refresh progress
+        view.getGoalListView().getSelectionModel().selectedIndexProperty().addListener((obs, oldIdx, newIdx) -> {
+            int idx = newIdx.intValue();
+            if (idx >= 0 && idx < currentUser.getGoals().size()) {
+                currentGoal = currentUser.getGoals().get(idx);
+                refreshProgress();
+            }
+        });
+
         view.getAddGoalBtn().setOnAction(e -> addGoal());
-        view.getUpdateBtn() .setOnAction(e -> {
+        view.getUpdateBtn().setOnAction(e -> {
             String txt = view.getContributionField().getText().trim();
-            updateProgress(new BigDecimal(txt.isEmpty() ? "0" : txt));
+            if (txt.isEmpty()) { alert("Missing Input", "Please enter a contribution amount."); return; }
+            try {
+                BigDecimal contribution = new BigDecimal(txt);
+                // BUG FIX 11: zero or negative contributions were silently accepted.
+                if (contribution.compareTo(BigDecimal.ZERO) <= 0) {
+                    alert("Invalid Amount", "Contribution must be greater than zero.");
+                    return;
+                }
+                updateProgress(contribution);
+                view.getContributionField().clear();
+            } catch (NumberFormatException ex) {
+                alert("Invalid Input", "Please enter a valid number.");
+            }
         });
         view.getBackBtn().setOnAction(e -> new DashboardController(stage, currentUser).show());
     }
@@ -427,19 +530,54 @@ class GoalController {
         if (name.isEmpty() || target.isEmpty() || view.getDeadlinePicker().getValue() == null) {
             alert("Missing Fields", "Please fill all goal fields."); return;
         }
+        // BUG FIX 12: deadline in the past was accepted for a new goal.
+        if (view.getDeadlinePicker().getValue().isBefore(LocalDate.now())) {
+            alert("Invalid Deadline", "Deadline must be a future date."); return;
+        }
         try {
+            BigDecimal targetAmt = new BigDecimal(target);
+            if (targetAmt.compareTo(BigDecimal.ZERO) <= 0) {
+                alert("Invalid Target", "Target amount must be greater than zero."); return;
+            }
             currentGoal = new Goal(currentUser.getGoals().size() + 1, name,
-                    new BigDecimal(target), view.getDeadlinePicker().getValue(), currentUser);
+                    targetAmt, view.getDeadlinePicker().getValue(), currentUser);
             currentUser.addGoal(currentGoal);
+
+            // Update ListView with the new goal
+            view.getGoalListView().getItems().add(currentGoal.getName() + " — Target: " + targetAmt + " | " + currentGoal.getStatus());
+            view.getGoalListView().getSelectionModel().selectLast();
+
+            // BUG FIX 13: form fields were never cleared after adding a goal.
+            view.getNameField().clear();
+            view.getTargetField().clear();
+            view.getDeadlinePicker().setValue(null);
+
             refreshProgress();
             alertInfo("Goal Added!", "Goal '" + name + "' created successfully.");
-        } catch (NumberFormatException ex) { alert("Invalid Input", "Target amount must be a number."); }
+        } catch (NumberFormatException ex) {
+            alert("Invalid Input", "Target amount must be a number.");
+        }
     }
 
     public void updateProgress(BigDecimal contribution) {
         if (currentGoal == null) { alert("No Goal", "Please create a goal first."); return; }
+
+        // BUG FIX 14: updating a COMPLETED or CANCELLED goal had no guard.
+        if (currentGoal.getStatus() == GoalStatus.COMPLETED) {
+            alertInfo("Already Complete", "This goal is already completed!"); return;
+        }
+        if (currentGoal.getStatus() == GoalStatus.CANCELLED) {
+            alert("Goal Cancelled", "This goal is cancelled. Please create a new one."); return;
+        }
+
         currentGoal.updateProgress(contribution);
         refreshProgress();
+        // Update the ListView entry to reflect new status
+        int idx = currentUser.getGoals().indexOf(currentGoal);
+        if (idx >= 0) {
+            view.getGoalListView().getItems().set(idx,
+                    currentGoal.getName() + " — Target: " + currentGoal.getTargetAmount() + " | " + currentGoal.getStatus());
+        }
     }
 
     private void refreshProgress() {
@@ -447,9 +585,15 @@ class GoalController {
         view.getProgressBar().setProgress(Math.min(currentGoal.getProgressPercentage().doubleValue() / 100.0, 1.0));
         view.getStatusLabel().setText("Progress: " + currentGoal.getProgressPercentage() + "% — " + currentGoal.getStatus());
         switch (currentGoal.getStatus()) {
-            case COMPLETED: view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.SUCCESS + "; -fx-font-weight: bold;"); view.getProgressBar().setStyle("-fx-accent: " + Styles.SUCCESS + ";"); break;
-            case CANCELLED: view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.DANGER  + "; -fx-font-weight: bold;"); view.getProgressBar().setStyle("-fx-accent: " + Styles.DANGER  + ";"); break;
-            default:        view.getStatusLabel().setStyle("-fx-text-fill: " + Styles.PRIMARY + "; -fx-font-weight: bold;"); view.getProgressBar().setStyle("-fx-accent: " + Styles.PRIMARY + ";");
+            case COMPLETED:
+                view.getStatusLabel().setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #27ae60;"); break;
+            case CANCELLED:
+                view.getStatusLabel().setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #e74c3c;"); break;
+            default:
+                view.getStatusLabel().setStyle("-fx-text-fill: #3498db; -fx-font-weight: bold;");
+                view.getProgressBar().setStyle("-fx-accent: #3498db;");
         }
     }
 
@@ -481,11 +625,16 @@ class ReportController {
 
     public void generateReport(int userId) {
         Report report = new Report(currentUser.getReports().size() + 1, "Current Period", currentUser);
-        currentUser.getTransactions().forEach(report::addTransaction);
-        currentUser.addReport(report);
 
+        // BUG FIX 15: was adding ALL transactions (income + expense) to the report total.
+        //             Report total should only sum EXPENSE transactions.
+        currentUser.getTransactions().stream()
+                .filter(t -> "expense".equalsIgnoreCase(t.getType()))
+                .forEach(report::addTransaction);
+
+        currentUser.addReport(report);
         view.getSummaryTable().setItems(FXCollections.observableArrayList(report.getTransactions()));
-        view.getTotalLabel().setText("Total Expense: " + currentUser.getCurrency() + " " + report.getTotalExpense());
+        view.getTotalLabel().setText("Total Expense: " + currentUser.getCurrency() + " " + report.getTotalExpense().toPlainString());
     }
 
     public void exportToCsv(int userId) {
