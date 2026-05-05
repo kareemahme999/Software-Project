@@ -274,19 +274,31 @@
 }
 
 .chart-title {
-    -fx-text-fill: #E8EBF0;
+    -fx-text-fill: #FFFFFF;
     -fx-font-size: 14px;
     -fx-font-weight: bold;
 }
 
 .chart-pie-label {
-    -fx-text-fill: #E8EBF0;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* JavaFX renders pie slice labels as Label nodes inside the chart;
+   these selectors ensure they are always white regardless of version */
+.chart-pie-label-line {
+    -fx-stroke: #FFFFFF;
+}
+
+.pie-chart .chart-pie-label {
+    -fx-text-fill: #FFFFFF;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
 
 .chart-legend-item {
-    -fx-text-fill: #E8EBF0;
+    -fx-text-fill: #FFFFFF;
     -fx-font-size: 12px;
 }
 
