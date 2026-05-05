@@ -707,6 +707,7 @@ class ReportView {
         descCol.setCellValueFactory(new PropertyValueFactory<>("description"));
         summaryTable.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol);
 
+
         totalLabel = new Label("Total Expense: $0.00");
         totalLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 15));
         totalLabel.setTextFill(Color.web(Styles.DANGER));

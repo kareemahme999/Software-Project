@@ -632,6 +632,8 @@ class ReportController {
                 .filter(t -> "expense".equalsIgnoreCase(t.getType()))
                 .forEach(report::addTransaction);
 
+
+
         currentUser.addReport(report);
         view.getSummaryTable().setItems(FXCollections.observableArrayList(report.getTransactions()));
         view.getTotalLabel().setText("Total Expense: " + currentUser.getCurrency() + " " + report.getTotalExpense().toPlainString());

@@ -467,6 +467,7 @@ class Notification {
     private User             user;
     private NotificationType type;
 
+
     public Notification(int id, String message, User user, NotificationType type) {
         this.notifId = id; this.message = message; this.isRead = false;
         this.timestamp = LocalDateTime.now(); this.user = user; this.type = type;
