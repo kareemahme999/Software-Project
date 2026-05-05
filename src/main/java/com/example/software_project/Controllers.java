@@ -289,16 +289,23 @@ class TransactionController {
         dialog.setTitle("Add Transaction");
         dialog.setHeaderText("Enter transaction details");
 
-        // BUG FIX 5: type was a free TextField — any string could be entered.
-        //            Replaced with ComboBox to enforce only "income" or "expense".
+        // FIX 5: type was a free TextField — any string could be entered.
+        //        Replaced with ComboBox to enforce only "income" or "expense".
         ComboBox<String> typeBox = new ComboBox<>(FXCollections.observableArrayList("income", "expense"));
         typeBox.setPromptText("Select type");
         typeBox.setPrefWidth(200);
 
         TextField amountField = new TextField(); amountField.setPromptText("Amount (e.g. 100.00)");
         TextField descField   = new TextField(); descField.setPromptText("Description");
-        // BUG FIX 6: empty category now defaults to "General" instead of crashing.
-        TextField catField    = new TextField(); catField.setPromptText("Category (optional, e.g. Food)");
+
+        // FIX: Category is now a ComboBox with predefined options instead of a free TextField.
+        //      This ensures consistent category names for budget grouping and pie chart display.
+        ComboBox<String> catBox = new ComboBox<>(FXCollections.observableArrayList(
+                "Food", "Transport", "Bills", "Shopping", "Health",
+                "Entertainment", "Education", "Savings", "Income", "General"));
+        catBox.setPromptText("Select category");
+        catBox.setPrefWidth(200);
+        catBox.setValue("General");
 
         javafx.scene.layout.GridPane g = new javafx.scene.layout.GridPane();
         g.setHgap(10); g.setVgap(10);
@@ -306,7 +313,7 @@ class TransactionController {
         g.add(new Label("Type:"),        0, 0); g.add(typeBox,     1, 0);
         g.add(new Label("Amount:"),      0, 1); g.add(amountField, 1, 1);
         g.add(new Label("Description:"), 0, 2); g.add(descField,   1, 2);
-        g.add(new Label("Category:"),    0, 3); g.add(catField,    1, 3);
+        g.add(new Label("Category:"),    0, 3); g.add(catBox,      1, 3);
         dialog.getDialogPane().setContent(g);
 
         ButtonType addType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
@@ -315,7 +322,6 @@ class TransactionController {
         // Prevent JavaFX from auto-disabling the Add button
         javafx.scene.Node addButton = dialog.getDialogPane().lookupButton(addType);
         addButton.setDisable(false);
-        // Keep button always enabled — validation happens in resultConverter
         typeBox.valueProperty().addListener((obs, o, n) -> addButton.setDisable(false));
         amountField.textProperty().addListener((obs, o, n) -> addButton.setDisable(false));
 
@@ -332,13 +338,14 @@ class TransactionController {
                 }
                 try {
                     BigDecimal amount = new BigDecimal(amountField.getText().trim());
-                    // BUG FIX 7: negative or zero amounts were silently accepted.
+                    // FIX 7: negative or zero amounts were silently accepted.
                     if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                         alert("Invalid Amount", "Amount must be greater than zero.");
                         return null;
                     }
                     int newId = currentUser.getTransactions().size() + 1;
-                    String catName = catField.getText().trim().isEmpty() ? "General" : catField.getText().trim();
+                    // FIX: read category from ComboBox, never null — defaults to "General"
+                    String catName = catBox.getValue() == null ? "General" : catBox.getValue();
                     Category cat   = new Category(newId, catName, type);
                     String   desc  = descField.getText().trim().isEmpty() ? "-" : descField.getText().trim();
                     return new Transaction(newId, type, amount, LocalDate.now(), desc, currentUser, cat);
@@ -353,6 +360,39 @@ class TransactionController {
         result.ifPresent(t -> {
             currentUser.addTransaction(t);
             data.add(t);
+
+            // FIX: Auto-update the active budget when an expense is added.
+            //      Recalculate total spent across ALL expense transactions so the
+            //      budget stays correct even after deletions or multiple additions.
+            if ("expense".equalsIgnoreCase(t.getType()) && !currentUser.getBudgets().isEmpty()) {
+                Budget activeBudget = currentUser.getBudgets().get(0);
+                BigDecimal totalSpent = currentUser.getTransactions().stream()
+                        .filter(tx -> "expense".equalsIgnoreCase(tx.getType()))
+                        .map(Transaction::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                activeBudget.setSpentAmount(totalSpent);
+
+                // FIX: Show an alert if budget is now exceeded
+                if (activeBudget.getStatus() == BudgetStatus.EXCEEDED) {
+                    Alert warn = new Alert(Alert.AlertType.WARNING);
+                    warn.setTitle("Budget Exceeded");
+                    warn.setHeaderText(null);
+                    warn.setContentText("⚠ Your budget limit of "
+                            + activeBudget.getTotalExpense().toPlainString()
+                            + " has been exceeded! Spent: "
+                            + activeBudget.getSpentAmount().toPlainString());
+                    warn.showAndWait();
+                } else if (activeBudget.getStatus() == BudgetStatus.NEAR_LIMIT) {
+                    Alert warn = new Alert(Alert.AlertType.WARNING);
+                    warn.setTitle("Budget Near Limit");
+                    warn.setHeaderText(null);
+                    warn.setContentText("⚠ You are near your budget limit! Spent: "
+                            + activeBudget.getSpentAmount().toPlainString()
+                            + " / Limit: " + activeBudget.getTotalExpense().toPlainString());
+                    warn.showAndWait();
+                }
+            }
+
             // PERSIST: save transactions to disk immediately
             UserStore.saveTransactions(currentUser);
         });
@@ -387,6 +427,14 @@ class BudgetController {
         if (!currentUser.getBudgets().isEmpty()) {
             budget = currentUser.getBudgets().get(0);
             view.getLimitField().setText(budget.getTotalExpense().toPlainString());
+            // FIX: Always recalculate spentAmount from current transactions when the
+            //      view is opened, so any expenses added in TransactionController are
+            //      immediately reflected here without needing a manual "Save".
+            BigDecimal totalSpent = currentUser.getTransactions().stream()
+                    .filter(t -> "expense".equalsIgnoreCase(t.getType()))
+                    .map(Transaction::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            budget.setSpentAmount(totalSpent);
             checkLimit();
         }
         bindEvents();

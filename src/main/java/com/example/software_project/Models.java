@@ -270,6 +270,7 @@ class Transaction {
         this.date = date; this.description = description; this.user = user; this.category = category;
     }
 
+    // ── Standard getters ──────────────────────────────────────────────────────
     public int        getTransactionId() { return transactionId; }
     public String     getType()          { return type; }
     public BigDecimal getAmount()        { return amount; }
@@ -278,6 +279,32 @@ class Transaction {
     public User       getUser()          { return user; }
     public Category   getCategory()      { return category; }
 
+    // ── JavaFX-observable property accessors ──────────────────────────────────
+    // These allow PropertyValueFactory (and lambda cellValueFactories) to bind
+    // correctly. Without these, PropertyValueFactory silently fails for
+    // non-String/non-primitive return types (BigDecimal, LocalDate), leaving
+    // table cells blank. The lambdas in the View call these directly.
+    public javafx.beans.property.SimpleStringProperty transactionIdProperty() {
+        return new javafx.beans.property.SimpleStringProperty(String.valueOf(transactionId));
+    }
+    public javafx.beans.property.SimpleStringProperty typeProperty() {
+        return new javafx.beans.property.SimpleStringProperty(type);
+    }
+    public javafx.beans.property.SimpleStringProperty amountProperty() {
+        return new javafx.beans.property.SimpleStringProperty(amount.toPlainString());
+    }
+    public javafx.beans.property.SimpleStringProperty dateProperty() {
+        return new javafx.beans.property.SimpleStringProperty(date.toString());
+    }
+    public javafx.beans.property.SimpleStringProperty descriptionProperty() {
+        return new javafx.beans.property.SimpleStringProperty(description);
+    }
+    public javafx.beans.property.SimpleStringProperty categoryProperty() {
+        return new javafx.beans.property.SimpleStringProperty(
+                category != null ? category.getName() : "General");
+    }
+
+    // ── Setters ───────────────────────────────────────────────────────────────
     public void setType(String t)        { type = t; }
     public void setAmount(BigDecimal a)  { amount = a; }
     public void setDate(LocalDate d)     { date = d; }

@@ -458,17 +458,55 @@ class TransactionView {
         VBox.setVgrow(tableView, Priority.ALWAYS);
         tableView.setStyle("-fx-background-color: " + Styles.CARD + "; -fx-border-color: " + Styles.BORDER + ";");
 
-        TableColumn<Transaction, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(new PropertyValueFactory<>("transactionId")); idCol.setMaxWidth(60);
+        // ROOT-CAUSE FIX: PropertyValueFactory uses reflection + JavaFX property conventions.
+        // When the getter returns a non-String, non-primitive type (BigDecimal, LocalDate),
+        // the generic type parameter on the column (e.g. TableColumn<Transaction, String>)
+        // causes a silent ClassCastException inside JavaFX — the cell simply renders blank.
+        // The ONLY reliable fix is to use explicit lambda cellValueFactories that return
+        // a SimpleStringProperty wrapping the value's toString(). This works for every type.
+
+        // Column: ID — int getter, wrap as String for consistent rendering
+        TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        String.valueOf(cd.getValue().getTransactionId())));
+        idCol.setMaxWidth(60);
+
+        // Column: Type — String getter, still use lambda for consistency
         TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        typeCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getType()));
+
+        // Column: Amount — BigDecimal getter (was BLANK with PropertyValueFactory<..,String>)
+        // Fix: convert to plain string via toPlainString() inside the lambda
         TableColumn<Transaction, String> amountCol = new TableColumn<>("Amount");
-        amountCol.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        amountCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getAmount().toPlainString()));
+
+        // Column: Date — LocalDate getter (was BLANK with PropertyValueFactory<...,String>)
+        // Fix: convert to string via toString() inside the lambda
         TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(new PropertyValueFactory<>("date"));
+        dateCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getDate().toString()));
+
+        // Column: Description — String getter
         TableColumn<Transaction, String> descCol = new TableColumn<>("Description");
-        descCol.setCellValueFactory(new PropertyValueFactory<>("description"));
-        tableView.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol);
+        descCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getDescription()));
+
+        // Column: Category — nested object, read getName() safely with null guard
+        TableColumn<Transaction, String> catCol = new TableColumn<>("Category");
+        catCol.setCellValueFactory(cd -> {
+            Category cat = cd.getValue().getCategory();
+            return new javafx.beans.property.SimpleStringProperty(
+                    cat != null ? cat.getName() : "General");
+        });
+
+        tableView.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol, catCol);
 
         VBox root = new VBox(16, title, controls, tableView);
         root.setPadding(new Insets(28));
@@ -695,17 +733,41 @@ class ReportView {
         VBox.setVgrow(summaryTable, Priority.ALWAYS);
         summaryTable.setStyle("-fx-background-color: " + Styles.CARD + ";");
 
-        TableColumn<Transaction, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(new PropertyValueFactory<>("transactionId"));
+        // Same fix as TransactionView: use explicit lambda cellValueFactories
+        // to avoid silent ClassCastException from PropertyValueFactory type mismatches.
+        TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        String.valueOf(cd.getValue().getTransactionId())));
+
         TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+        typeCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getType()));
+
         TableColumn<Transaction, String> amountCol = new TableColumn<>("Amount");
-        amountCol.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        amountCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getAmount().toPlainString()));
+
         TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(new PropertyValueFactory<>("date"));
+        dateCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getDate().toString()));
+
         TableColumn<Transaction, String> descCol = new TableColumn<>("Description");
-        descCol.setCellValueFactory(new PropertyValueFactory<>("description"));
-        summaryTable.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol);
+        descCol.setCellValueFactory(cd ->
+                new javafx.beans.property.SimpleStringProperty(
+                        cd.getValue().getDescription()));
+
+        TableColumn<Transaction, String> catCol = new TableColumn<>("Category");
+        catCol.setCellValueFactory(cd -> {
+            Category cat = cd.getValue().getCategory();
+            return new javafx.beans.property.SimpleStringProperty(
+                    cat != null ? cat.getName() : "General");
+        });
+
+        summaryTable.getColumns().addAll(idCol, typeCol, amountCol, dateCol, descCol, catCol);
 
 
         totalLabel = new Label("Total Expense: $0.00");
