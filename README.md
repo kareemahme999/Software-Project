@@ -1,4 +1,4 @@
-# 💰 Finance Tracker
+# 💰 Inst-Pal
 
 A desktop personal finance management application built with **Java** and **JavaFX**, featuring a dark-themed UI, multi-user authentication, and real-time budget monitoring.
 
