@@ -274,8 +274,7 @@ class DashboardController {
         view.getNavBudget()       .setOnAction(e -> new BudgetController(stage, currentUser).show());
         view.getNavGoals()        .setOnAction(e -> new GoalController(stage, currentUser).show());
         view.getNavReports()      .setOnAction(e -> new ReportController(stage, currentUser).show());
-        // FIX: wire Notifications navigation button (was missing entirely)
-        view.getNavNotifications().setOnAction(e -> new NotificationController(stage, currentUser).show());
+        view.getNavProfile()      .setOnAction(e -> new ProfileController(stage, currentUser).show());
         view.getNavLogout()       .setOnAction(e -> new LoginController(stage).show());
     }
 }
@@ -847,4 +846,235 @@ class ReportController {
 
     private void alert(String title, String msg)     { Alert a = new Alert(Alert.AlertType.WARNING);     a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
     private void alertInfo(String title, String msg) { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
+}
+
+// ─────────────────────────────────────────────
+//  PROFILE CONTROLLER
+//  Sequence diagram:
+//    UI → requestUserData()
+//      → getUserData(userId)  [UserStore / "Database"]
+//      → displayProfile(userData)
+//    "Edit Settings" button → SettingsController
+// ─────────────────────────────────────────────
+
+class ProfileController {
+
+    private ProfileView view;
+    private Stage       stage;
+    private User        currentUser;
+
+    public ProfileController(Stage stage, User user) {
+        this.stage       = stage;
+        this.currentUser = user;
+        this.view        = new ProfileView(stage);
+    }
+
+    public void show() {
+        stage.setScene(view.getScene());
+        stage.setTitle("Profile — " + currentUser.getName());
+        // Step 1 of the sequence diagram: requestUserData() triggers data retrieval
+        requestUserData();
+        bindEvents();
+    }
+
+    /**
+     * Sequence diagram step: UI → requestUserData() → getUserData(userId).
+     * Retrieves the user record from the in-memory "database" (UserStore) and
+     * delegates rendering to displayProfile().
+     */
+    public void requestUserData() {
+        User userData = getUserData(currentUser.getUserId());
+        if (userData != null) {
+            displayProfile(userData);
+        } else {
+            // Defensive fallback — should not occur with a valid session
+            Alert a = new Alert(Alert.AlertType.WARNING);
+            a.setTitle("Profile Error"); a.setHeaderText(null);
+            a.setContentText("Could not load user data. Please log in again.");
+            a.showAndWait();
+            new LoginController(stage).show();
+        }
+    }
+
+    /**
+     * Sequence diagram step: Database → getUserData(userId) → return userData.
+     * Looks up the user by ID in UserStore (our persistence layer).
+     */
+    private User getUserData(int userId) {
+        for (User u : UserStore.getAll()) {
+            if (u.getUserId() == userId) return u;
+        }
+        return currentUser;   // fallback: return the live session object
+    }
+
+    /**
+     * Sequence diagram step: UI.displayProfile(userData).
+     * Populates all read-only labels with the retrieved user data.
+     */
+    public void displayProfile(User userData) {
+        view.getNameValueLabel()    .setText(userData.getName());
+        view.getEmailValueLabel()   .setText(userData.getEmail());
+        view.getCurrencyValueLabel().setText(userData.getCurrency());
+    }
+
+    /**
+     * Implements the refreshProfile() step from the success path.
+     * Re-reads live data and re-renders the profile screen.
+     */
+    public void refreshProfile() {
+        requestUserData();
+    }
+
+    private void bindEvents() {
+        view.getEditSettingsBtn().setOnAction(e ->
+                new SettingsController(stage, currentUser, this).show());
+        view.getBackBtn().setOnAction(e ->
+                new DashboardController(stage, currentUser).show());
+    }
+
+    // Package-private accessors used by SettingsController
+    Stage getStage()       { return stage; }
+    User  getCurrentUser() { return currentUser; }
+}
+
+// ─────────────────────────────────────────────
+//  SETTINGS CONTROLLER
+//  Sequence diagram:
+//    openSettingsOption() → displayOptions()
+//    user edits → Save → updateProfile(data) → updateUserSettings(data)
+//    success → showSuccessMessage() → refreshProfile()
+//    failure → showErrorMessage()
+// ─────────────────────────────────────────────
+
+class SettingsController {
+
+    private SettingsView      view;
+    private Stage             stage;
+    private User              currentUser;
+    /** Back-reference so we can call refreshProfile() after a successful save. */
+    private ProfileController profileController;
+
+    public SettingsController(Stage stage, User user, ProfileController profileController) {
+        this.stage             = stage;
+        this.currentUser       = user;
+        this.profileController = profileController;
+        this.view              = new SettingsView(stage);
+    }
+
+    /**
+     * Sequence diagram step: openSettingsOption() → displayOptions().
+     */
+    public void show() {
+        stage.setScene(view.getScene());
+        stage.setTitle("Settings — " + currentUser.getName());
+        displayOptions();
+        bindEvents();
+    }
+
+    /**
+     * Sequence diagram step: displayOptions().
+     * Pre-fills every editable field with the user's current data so the user
+     * can see current values and change only what they need.
+     */
+    public void displayOptions() {
+        view.getNameField()   .setText(currentUser.getName());
+        view.getEmailField()  .setText(currentUser.getEmail());
+        view.getCurrencyBox() .setValue(currentUser.getCurrency());
+        view.getNewPasswordField()    .clear();
+        view.getConfirmPasswordField().clear();
+    }
+
+    /**
+     * Sequence diagram step: UI → Save → updateProfile(data) → Backend.
+     * Validates the form then delegates to the persistence layer.
+     */
+    public void updateProfile() {
+        String newName     = view.getNameField()   .getText().trim();
+        String newEmail    = view.getEmailField()  .getText().trim();
+        String newCurrency = view.getCurrencyBox() .getValue();
+        String newPassword = view.getNewPasswordField()    .getText();
+        String confirmPass = view.getConfirmPasswordField().getText();
+
+        // ── Validation ────────────────────────────────────────────────
+        if (newName.isEmpty()) {
+            showErrorMessage("Missing Name", "Full name cannot be empty.");
+            return;
+        }
+        if (newEmail.isEmpty() || !newEmail.contains("@") || !newEmail.contains(".")) {
+            showErrorMessage("Invalid Email", "Please enter a valid email address.");
+            return;
+        }
+        if (newCurrency == null || newCurrency.isBlank()) {
+            showErrorMessage("Missing Currency", "Please select a currency.");
+            return;
+        }
+        // Password change is optional; validate only when filled in
+        if (!newPassword.isEmpty()) {
+            if (newPassword.length() < 6) {
+                showErrorMessage("Weak Password", "New password must be at least 6 characters.");
+                return;
+            }
+            if (!newPassword.equals(confirmPass)) {
+                showErrorMessage("Password Mismatch", "New passwords do not match.");
+                return;
+            }
+        }
+
+        // ── Delegate to "Database" layer ──────────────────────────────
+        // Sequence diagram: Backend → updateUserSettings(data) → Database
+        boolean success = updateUserSettings(
+                newName, newEmail, newCurrency,
+                newPassword.isEmpty() ? null : newPassword);
+
+        if (success) {
+            // Success path: showSuccessMessage() then refreshProfile()
+            showSuccessMessage();
+            refreshProfile();
+        } else {
+            // Failure path: showErrorMessage()
+            showErrorMessage("Update Failed",
+                    "That email address is already registered to another account.");
+        }
+    }
+
+    /**
+     * Sequence diagram step: Backend → updateUserSettings(data) → Database.
+     * Calls UserStore which mutates the live User object and persists to disk.
+     */
+    private boolean updateUserSettings(String name, String email,
+                                       String currency, String password) {
+        return UserStore.updateUserSettings(currentUser, name, email, currency, password);
+    }
+
+    /** Sequence diagram: success → showSuccessMessage(). */
+    public void showSuccessMessage() {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Settings Saved");
+        a.setHeaderText(null);
+        a.setContentText("Your profile has been updated successfully.");
+        a.showAndWait();
+    }
+
+    /** Sequence diagram: failure → showErrorMessage(). */
+    public void showErrorMessage(String title, String message) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(message);
+        a.showAndWait();
+    }
+
+    /**
+     * Sequence diagram: success → refreshProfile().
+     * Returns to the Profile screen and re-fetches the updated user data.
+     */
+    public void refreshProfile() {
+        profileController.show();
+    }
+
+    private void bindEvents() {
+        view.getSaveBtn()  .setOnAction(e -> updateProfile());
+        // Cancel returns to profile without saving
+        view.getCancelBtn().setOnAction(e -> profileController.show());
+    }
 }

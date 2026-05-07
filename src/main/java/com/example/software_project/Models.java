@@ -165,6 +165,46 @@ class UserStore {
     }
 
     public static List<User> getAll() { load(); return Collections.unmodifiableList(users); }
+
+    /**
+     * Persist updated profile fields for an existing user.
+     * Matches the sequence diagram step: updateUserSettings(data) → Database.
+     *
+     * @param user     the live User object (already mutated by the caller)
+     * @param newName  new display name  (null → keep existing)
+     * @param newEmail new email address (null → keep existing)
+     * @param newCurrency new currency code (null → keep existing)
+     * @param newPassword new password    (null or blank → keep existing)
+     * @return true if the update succeeded; false if the new email is already
+     *         taken by a *different* user (email-collision guard)
+     */
+    public static boolean updateUserSettings(User user,
+                                             String newName,
+                                             String newEmail,
+                                             String newCurrency,
+                                             String newPassword) {
+        load();
+
+        // Email-collision guard: reject if another account already owns that email
+        if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail())) {
+            for (User u : users) {
+                if (u.getUserId() != user.getUserId()
+                        && u.getEmail().equalsIgnoreCase(newEmail)) {
+                    return false;   // email taken by someone else
+                }
+            }
+        }
+
+        // Apply changes to the live in-memory object
+        if (newName     != null && !newName.isBlank())     user.setName(newName);
+        if (newEmail    != null && !newEmail.isBlank())    user.setEmail(newEmail);
+        if (newCurrency != null && !newCurrency.isBlank()) user.setCurrency(newCurrency);
+        if (newPassword != null && !newPassword.isBlank()) user.setPasswordHash(newPassword);
+
+        // Persist the whole users list to disk
+        save();
+        return true;
+    }
 }
 
 // ─────────────────────────────────────────────
