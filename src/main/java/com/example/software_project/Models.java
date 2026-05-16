@@ -6,18 +6,12 @@ import java.util.*;
 import java.io.*;
 import java.nio.file.*;
 
-// ─────────────────────────────────────────────
-//  ENUMS
-// ─────────────────────────────────────────────
 
 enum GoalStatus         { IN_PROGRESS, COMPLETED, CANCELLED }
 enum NotificationType   { BUDGET_NEAR_LIMIT, BUDGET_EXCEEDED, GOAL_COMPLETED }
 enum BudgetStatus       { ON_TRACK, NEAR_LIMIT, EXCEEDED }
 
-// ─────────────────────────────────────────────
-//  USER STORE  (JSON file-based persistence)
-// ─────────────────────────────────────────────
-
+//  USER STORE  
 class UserStore {
 
     private static final String FILE = "users.json";
@@ -207,9 +201,7 @@ class UserStore {
     }
 }
 
-// ─────────────────────────────────────────────
 //  USER
-// ─────────────────────────────────────────────
 
 class User {
 
@@ -268,9 +260,7 @@ class User {
     }
 }
 
-// ─────────────────────────────────────────────
 //  CATEGORY
-// ─────────────────────────────────────────────
 
 class Category {
     private int    categoryId;
@@ -291,9 +281,7 @@ class Category {
     public void setType(String t) { type = t; }
 }
 
-// ─────────────────────────────────────────────
 //  TRANSACTION
-// ─────────────────────────────────────────────
 
 class Transaction {
     private int        transactionId;
@@ -358,9 +346,7 @@ class Transaction {
     }
 }
 
-// ─────────────────────────────────────────────
 //  BUDGET
-// ─────────────────────────────────────────────
 
 class Budget {
     private int        budgetId;
@@ -401,9 +387,7 @@ class Budget {
     public void setStatus(BudgetStatus s)     { status = s; }
 }
 
-// ─────────────────────────────────────────────
 //  BUDGET ALERT
-// ─────────────────────────────────────────────
 
 class BudgetAlert {
     private int              alertId;
@@ -428,9 +412,7 @@ class BudgetAlert {
     public void setNotificationType(NotificationType t) { notificationType = t; }
 }
 
-// ─────────────────────────────────────────────
 //  GOAL
-// ─────────────────────────────────────────────
 
 class Goal {
     private int        goalId;
@@ -474,9 +456,7 @@ class Goal {
     public void setStatus(GoalStatus s)      { status = s; }
 }
 
-// ─────────────────────────────────────────────
 //  REPORT
-// ─────────────────────────────────────────────
 
 class Report {
     private int        reportId;
@@ -522,9 +502,7 @@ class Report {
     public void setUser(User u)               { user = u; }
 }
 
-// ─────────────────────────────────────────────
 //  NOTIFICATION
-// ─────────────────────────────────────────────
 
 class Notification {
     private int              notifId;
