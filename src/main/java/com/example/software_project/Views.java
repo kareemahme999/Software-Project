@@ -11,9 +11,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.*;
 import javafx.stage.Stage;
 
-// ─────────────────────────────────────────────
 //  SHARED STYLE HELPERS
-// ─────────────────────────────────────────────
 
 class Styles {
 
@@ -103,7 +101,6 @@ class Styles {
         return l;
     }
 
-    // FIX 1: new helper — always dark text, for labels on card/BG backgrounds
     static Label plainLabel(String text) {
         Label l = new Label(text);
         l.setFont(Font.font(FONT, 13));
@@ -122,9 +119,7 @@ class Styles {
     }
 }
 
-// ─────────────────────────────────────────────
 //  LOGIN VIEW
-// ─────────────────────────────────────────────
 
 class LoginView {
 
@@ -212,9 +207,7 @@ class LoginView {
     public Stage         getStage()         { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  REGISTRATION VIEW
-// ─────────────────────────────────────────────
 
 class RegistrationView {
 
@@ -323,9 +316,7 @@ class RegistrationView {
     public Stage            getStage()           { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  DASHBOARD VIEW
-// ─────────────────────────────────────────────
 
 class DashboardView {
 
@@ -503,15 +494,13 @@ class DashboardView {
     public Button                   getNavBudget()        { return navBudget; }
     public Button                   getNavGoals()         { return navGoals; }
     public Button                   getNavReports()       { return navReports; }
-    // NEW: expose navProfile so DashboardController can bind its action
+    //  expose navProfile so DashboardController can bind its action
     public Button                   getNavProfile()       { return navProfile; }
     public Button                   getNavLogout()        { return navLogout; }
     public Stage                    getStage()            { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  TRANSACTION VIEW
-// ─────────────────────────────────────────────
 
 class TransactionView {
 
@@ -544,13 +533,6 @@ class TransactionView {
         VBox.setVgrow(tableView, Priority.ALWAYS);
         tableView.setStyle("-fx-background-color: " + Styles.CARD + "; -fx-border-color: " + Styles.BORDER + ";");
 
-        // ROOT-CAUSE FIX: PropertyValueFactory uses reflection + JavaFX property conventions.
-        // When the getter returns a non-String, non-primitive type (BigDecimal, LocalDate),
-        // the generic type parameter on the column (e.g. TableColumn<Transaction, String>)
-        // causes a silent ClassCastException inside JavaFX — the cell simply renders blank.
-        // The ONLY reliable fix is to use explicit lambda cellValueFactories that return
-        // a SimpleStringProperty wrapping the value's toString(). This works for every type.
-
         // Column: ID — int getter, wrap as String for consistent rendering
         TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(cd ->
@@ -565,14 +547,12 @@ class TransactionView {
                         cd.getValue().getType()));
 
         // Column: Amount — BigDecimal getter (was BLANK with PropertyValueFactory<..,String>)
-        // Fix: convert to plain string via toPlainString() inside the lambda
         TableColumn<Transaction, String> amountCol = new TableColumn<>("Amount");
         amountCol.setCellValueFactory(cd ->
                 new javafx.beans.property.SimpleStringProperty(
                         cd.getValue().getAmount().toPlainString()));
 
         // Column: Date — LocalDate getter (was BLANK with PropertyValueFactory<...,String>)
-        // Fix: convert to string via toString() inside the lambda
         TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(cd ->
                 new javafx.beans.property.SimpleStringProperty(
@@ -611,16 +591,14 @@ class TransactionView {
     public Stage                  getStage()        { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  BUDGET VIEW
-// ─────────────────────────────────────────────
 
 class BudgetView {
 
     private Stage       stage;
     private TextField   limitField;
     private Label       statusLabel;
-    private Label       spentLabel;   // FIX 3: shows "Spent X / Limit Y" with dark text
+    private Label       spentLabel;   
     private ProgressBar progressBar;
     private Button      saveBtn, backBtn;
 
@@ -681,11 +659,8 @@ class BudgetView {
     public Stage       getStage()       { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  GOAL VIEW
-// FIX 2: Added ListView so all goals are stored and visible.
 //        User selects a goal from the list to update its progress independently.
-// ─────────────────────────────────────────────
 
 class GoalView {
 
@@ -695,7 +670,6 @@ class GoalView {
     private DatePicker       deadlinePicker;
     private TextField        nameField, targetField, contributionField;
     private Button           addGoalBtn, updateBtn, backBtn;
-    // FIX 2: ListView holds display strings; selection tells Controller which goal is active
     private ListView<String> goalListView;
 
     public GoalView(Stage stage) { this.stage = stage; }
@@ -745,7 +719,6 @@ class GoalView {
         progressBar.setPrefWidth(420); progressBar.setPrefHeight(20);
         progressBar.setStyle("-fx-accent: " + Styles.PRIMARY + ";");
 
-        // FIX 1: statusLabel starts with dark text; Controller sets colour per state
         statusLabel = new Label("Select a goal to see progress");
         statusLabel.setFont(Font.font(Styles.FONT, FontWeight.BOLD, 13));
         statusLabel.setTextFill(Color.web(Styles.TEXT_DARK));
@@ -792,9 +765,7 @@ class GoalView {
     public Stage            getStage()             { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  REPORT VIEW
-// ─────────────────────────────────────────────
 
 class ReportView {
 
@@ -821,7 +792,6 @@ class ReportView {
         VBox.setVgrow(summaryTable, Priority.ALWAYS);
         summaryTable.setStyle("-fx-background-color: " + Styles.CARD + ";");
 
-        // Same fix as TransactionView: use explicit lambda cellValueFactories
         // to avoid silent ClassCastException from PropertyValueFactory type mismatches.
         TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(cd ->
@@ -879,12 +849,10 @@ class ReportView {
     public Stage                  getStage()        { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  NOTIFICATION VIEW
 //  Displays unread/read notifications for the current user.
 //  Controller populates ListView via requestNotifications().
 //  "Mark as Read" button triggers the markAsRead() flow.
-// ─────────────────────────────────────────────
 
 class NotificationView {
 
@@ -929,12 +897,10 @@ class NotificationView {
     public Stage            getStage()        { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  PROFILE VIEW
 //  Sequence diagram: UI → requestUserData() → displayProfile(userData)
 //  Read-only display of the current user's profile information.
 //  "Edit Settings" button navigates to SettingsView.
-// ─────────────────────────────────────────────
 
 class ProfileView {
 
@@ -1012,11 +978,9 @@ class ProfileView {
     public Stage  getStage()              { return stage; }
 }
 
-// ─────────────────────────────────────────────
 //  SETTINGS VIEW
 //  Sequence diagram: displayOptions() → user edits → updateProfile(data)
 //  Editable form for name, email, currency, and optional password change.
-// ─────────────────────────────────────────────
 
 class SettingsView {
 
@@ -1035,21 +999,21 @@ class SettingsView {
         Label pageTitle = Styles.subheading("Settings");
         Label subtitle  = Styles.muted("Update your profile information below.");
 
-        // ── Name ──────────────────────────────────────────────────────
+        //  Name 
         Label nameLbl = fieldLabel("Full Name");
         nameField = new TextField();
         nameField.setPromptText("Your full name");
         nameField.setPrefHeight(42);
         Styles.field(nameField);
 
-        // ── Email ─────────────────────────────────────────────────────
+        //  Email 
         Label emailLbl = fieldLabel("Email Address");
         emailField = new TextField();
         emailField.setPromptText("you@example.com");
         emailField.setPrefHeight(42);
         Styles.field(emailField);
 
-        // ── Currency ──────────────────────────────────────────────────
+        //  Currency 
         Label currencyLbl = fieldLabel("Currency");
         currencyBox = new ComboBox<>(FXCollections.observableArrayList(
                 "USD", "EUR", "GBP", "EGP", "SAR", "AED"));
@@ -1057,7 +1021,7 @@ class SettingsView {
         currencyBox.setPrefWidth(320);
         currencyBox.setStyle("-fx-font-family: '" + Styles.FONT + "'; -fx-font-size: 13px;");
 
-        // ── Password (optional) ───────────────────────────────────────
+        //  Password (optional) 
         Label passwordSection = Styles.plainLabel("Change Password (leave blank to keep current)");
         passwordSection.setFont(Font.font(Styles.FONT, FontWeight.SEMI_BOLD, 12));
         passwordSection.setTextFill(Color.web(Styles.TEXT_MUTED));
@@ -1074,7 +1038,7 @@ class SettingsView {
         confirmPasswordField.setPrefHeight(42);
         Styles.field(confirmPasswordField);
 
-        // ── Buttons ───────────────────────────────────────────────────
+        //  Buttons 
         saveBtn   = Styles.primaryBtn("Save Changes");
         cancelBtn = Styles.ghostBtn("Cancel", Styles.TEXT_MUTED);
 
@@ -1082,7 +1046,7 @@ class SettingsView {
         btnRow.setAlignment(Pos.CENTER_LEFT);
         btnRow.setPadding(new Insets(6, 0, 0, 0));
 
-        // ── Layout ────────────────────────────────────────────────────
+        //  Layout 
         VBox form = new VBox(10,
                 nameLbl,         nameField,
                 emailLbl,        emailField,
@@ -1119,7 +1083,7 @@ class SettingsView {
         return l;
     }
 
-    // ── Getters used by SettingsController ───────────────────────────
+    //  Getters used by SettingsController 
     public TextField        getNameField()            { return nameField; }
     public TextField        getEmailField()            { return emailField; }
     public ComboBox<String> getCurrencyBox()           { return currencyBox; }
